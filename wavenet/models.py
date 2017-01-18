@@ -97,8 +97,7 @@ class Classifier(chainer.Chain):
      def __call__(self, x):
          y = self.predictor(x)
 
-         # TODO: replace hard-coded reshaping
-         nll = F.sigmoid_cross_entropy(y, F.cast(x, 'i')) / x.size
+         nll = F.sigmoid_cross_entropy(y, F.cast(x, 'i'))
          chainer.report({'nll': nll}, self)
          return nll
 
