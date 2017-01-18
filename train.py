@@ -12,11 +12,12 @@ import chainer.training
 import chainer.training.extensions as extensions
 
 import wavenet.models as models
+import wavenet.utils as utils
 
 
 def main():
     parser = argparse.ArgumentParser(description='PixelCNN')
-    parser.add_argument('--batchsize', '-b', type=int, default=100,
+    parser.add_argument('--batchsize', '-b', type=int, default=16,
                         help='Number of images in each mini-batch')
     parser.add_argument('--epoch', '-e', type=int, default=20,
                         help='Number of sweeps over the dataset to train')
@@ -26,9 +27,9 @@ def main():
                         help='Resume the training from snapshot')
     parser.add_argument('--out', '-o', default='',
                         help='Output directory')
-    parser.add_argument('--unit', '-u', type=int, default=1000,
-                        help='Number of units')
     parser.add_argument('--hidden_dim', '-d', type=int, default=128,
+                        help='Number of hidden dimensions')
+    parser.add_argument('--out_hidden_dim', type=int, default=16,
                         help='Number of hidden dimensions')
     parser.add_argument('--blocks_num', '-n', type=int, default=15,
                         help='Number of layers')
@@ -39,16 +40,16 @@ def main():
     # iteration, which will be used by the PrintReport extension below.
     # XXX: 1 is for mnist dataset, 1 dimension - grayscale
     # XXX: double hidden dims as stated in paper
-    model = models.Classifier(models.PixelCNN(1, args.hidden_dim  * 2, args.blocks_num))
-    import ipdb; ipdb.set_trace()
+    model = models.Classifier(models.PixelCNN(1, args.hidden_dim, args.blocks_num, args.out_hidden_dim))
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
 
-    optimizer = chainer.optimizers.Adam()
+    optimizer = chainer.optimizers.RMSprop(lr=1e-3)
     optimizer.setup(model)
 
-    train, test = chainer.datasets.get_mnist()
+    train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False)
+    train, test = utils.binarize(train), utils.binarize(test)
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
@@ -71,6 +72,8 @@ def main():
         chainer.serializers.load_npz(args.resume, trainer)
 
     trainer.run()
+
+    chainer.serializers.save_npz('pixelcnn', model.predictor)
 
 
 if __name__ == '__main__':
