@@ -3,6 +3,8 @@ import numpy as np
 from functools import reduce
 from chainer.cuda import cupy
 
+import chainer
+
 # The name template of the statistic to collect and include in the report.
 # E.g. 'predictor/conv1/W/grad/percentile/sigma_one'
 key_template = '{model}/{layer}/{param}/{attr}/{statistic}'
@@ -39,7 +41,7 @@ def _percentiles(data, sigma=(0.13, 2.28, 15.87, 50, 84.13, 97.72, 99.87)):
 
     # Back to GPU when percentiles are computed.
     if cupy.get_array_module(data) is cupy:
-        ps = cupy.asarray(percentiles)
+        ps = cupy.asarray(ps)
 
     return ps
 
@@ -228,7 +230,7 @@ def parameter_statistics(model, param_name, attr_name, layer_name=None):
     return as_statistics(lp, model.name, param_name, attr_name)
 
 
-def as_statistics(data, model_name, param_name, attr_name, *, layer_name=None,
+def as_statistics(data, model_name, param_name, attr_name, layer_name=None,
                   statistics=('min', 'max', 'mean', 'std', 'percentiles')):
 
     """Compute statistics based on the given data and return it as a ``dict``.
