@@ -28,8 +28,7 @@ class MaskedConvolution2D(L.Convolution2D):
         if mask == 'A':
             pre_mask[yc, xc] = 0.0
 
-        self.add_persistent(
-            'mask', self.xp.broadcast_to(pre_mask, self.W.shape))
+        self.mask = self.xp.broadcast_to(pre_mask, self.W.shape)
 
     def __call__(self, x):
         if self.has_uninitialized_params:
@@ -39,6 +38,12 @@ class MaskedConvolution2D(L.Convolution2D):
         return chainer.functions.connection.convolution_2d.convolution_2d(
             x, self.W * self.mask, self.b, self.stride, self.pad, self.use_cudnn,
             deterministic=self.deterministic)
+
+    def to_gpu(self, device=None):
+        self._persistent.append('mask')
+        res = super().to_gpu(device)
+        self._persistent.remove('mask')
+        return res
 
 
 class ResidualBlock(chainer.Chain):
