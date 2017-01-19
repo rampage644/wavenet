@@ -65,9 +65,12 @@ def main():
 
     trainer.extend(extensions.dump_graph('main/nll'))
     trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
-    trainer.extend(extensions.LogReport())
+    trainer.extend(extensions.LogReport(trigger=(1000, 'iteration')))
     trainer.extend(extensions.PrintReport(
-        ['epoch', 'main/nll', 'validation/main/nll', 'elapsed_time']))
+        ['epoch', 'iteration', 'main/nll', 'validation/main/nll', 'elapsed_time']))
+    trainer.extend(extensions.PlotReport(
+        ['main/nll', 'validation/main/nll'], trigger=(1000, 'iteration')
+    ))
 
     trainer.extend(extensions.ProgressBar())
 
