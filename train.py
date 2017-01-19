@@ -33,6 +33,8 @@ def main():
                         help='Number of hidden dimensions')
     parser.add_argument('--blocks_num', '-n', type=int, default=15,
                         help='Number of layers')
+    parser.add_argument('--gradclip', type=float, default=1.0,
+                        help='Bound for gradient hard clipping')
     args = parser.parse_args()
 
     # Set up a neural network to train
@@ -45,8 +47,9 @@ def main():
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
 
-    optimizer = chainer.optimizers.RMSprop(lr=1e-3)
+    optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.GradientHardClipping(-args.gradclip, args.gradclip))
 
     train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False)
     train, test = utils.binarize(train), utils.binarize(test)
