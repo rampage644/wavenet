@@ -25,19 +25,13 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
         scipy.misc.toimage(images, cmin=0.0, cmax=1.0).save('{}.jpg'.format(filename))
 
     samples = chainer.Variable(
-        chainer.cuda.cupy.zeros((count ** 2, height * width), dtype='float32'))
+        chainer.cuda.cupy.zeros((count ** 2, 1, height, width), dtype='float32'))
 
     for i in range(height):
         for j in range(width):
             for k in range(channels):
                 next_sample = sample_fn(samples)
-                # samples.to_cpu()
-                samples = F.reshape(samples, [count ** 2, channels, height, width])
-                # print(next_sample.shape, samples.shape, type(next_sample), type(samples))
-                # print(type(next_sample.data), type(samples.data))
                 samples.data[:, k, i, j] = next_sample.data[:, k, i, j]
-                samples = F.reshape(samples, [count ** 2, height * width])
-                # samples.to_gpu()
 
     samples.to_cpu()
 
@@ -59,7 +53,7 @@ def main():
                         help='Number of units')
     parser.add_argument('--hidden_dim', '-d', type=int, default=128,
                         help='Number of hidden dimensions')
-    parser.add_argument('--out_hidden_dim', type=int, default=32,
+    parser.add_argument('--out_hidden_dim', type=int, default=16,
                         help='Number of hidden dimensions')
     parser.add_argument('--blocks_num', '-n', type=int, default=15,
                         help='Number of layers')
@@ -74,7 +68,7 @@ def main():
     def sample_fn(samples):
         return model(samples)
 
-    generate_and_save_samples(sample_fn, 28, 28, 1, 10)
+    generate_and_save_samples(sample_fn, 28, 28, 1, 1)
 
 
 if __name__ == '__main__':
