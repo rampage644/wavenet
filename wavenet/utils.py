@@ -7,9 +7,9 @@ from __future__ import unicode_literals
 import numpy as np
 
 
-def binarize(images):
+def binarize(images, xp=np):
     """
     Stochastically binarize values in [0, 1] by treating them as p-values of
     a Bernoulli distribution.
     """
-    return (np.random.uniform(size=images.shape) < images).astype('float32')
+    return (xp.random.uniform(size=images.shape) < images).astype('float32')

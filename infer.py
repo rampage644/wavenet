@@ -15,6 +15,7 @@ import chainer.training.extensions as extensions
 import chainer.functions as F
 
 import wavenet.models as models
+import wavenet.utils as utils
 
 
 def generate_and_save_samples(sample_fn, height, width, channels, count):
@@ -30,8 +31,8 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
     for i in range(height):
         for j in range(width):
             for k in range(channels):
-                next_sample = F.sigmoid(sample_fn(samples))
-                samples.data[:, k, i, j] = next_sample.data[:, k, i, j]
+                next_sample = utils.binarize(F.sigmoid(sample_fn(samples)).data, xp=chainer.cuda.cupy)
+                samples.data[:, k, i, j] = next_sample[:, k, i, j]
 
     samples.to_cpu()
 
