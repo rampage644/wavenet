@@ -144,7 +144,8 @@ class Classifier(chainer.Chain):
      def __call__(self, x):
          y = self.predictor(x)
 
-         nll = F.sigmoid_cross_entropy(y, F.cast(x, 'i'))
+         nll = F.sigmoid_cross_entropy(y, F.cast(x, 'i'), normalize=False)
+        #  nll = F.bernoulli_nll(x, y) / y.size
          chainer.report({'nll': nll}, self)
          return nll
 
