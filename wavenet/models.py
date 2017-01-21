@@ -36,6 +36,7 @@ class MaskedConvolution2D(L.Convolution2D):
             with chainer.cuda.get_device(self._device_id):
                 self._initialize_params(x.shape[1])
 
+        # TODO: using mask slows down computation a little
         return chainer.functions.connection.convolution_2d.convolution_2d(
             x, self.W * self.mask, self.b, self.stride, self.pad, self.use_cudnn,
             deterministic=self.deterministic)
