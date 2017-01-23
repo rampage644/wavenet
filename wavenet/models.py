@@ -87,53 +87,12 @@ class PixelCNN(chainer.Chain):
         )
 
     def __call__(self, x):
-        self.report()
-
         h = F.relu(self.conv1(x))
-        self.report_activations(h, 'conv1')
-
         h = self.blocks(h)
-        self.report_activations(h, 'blocks')
-
         h = F.relu(self.conv2(h))
-        self.report_activations(h, 'conv2')
-
         h = F.relu(self.conv3(h))
-        self.report_activations(h, 'conv3')
-
         h = self.conv4(h)
-        self.report_activations(h, 'conv4')
-
         return h
-
-    def report(self):
-        layers_to_monitor = [
-            'conv1', 'conv2', 'conv3', 'conv4'
-        ]
-
-        for layer in layers_to_monitor:
-            for stats in [monitor.weight_statistics(self, layer),
-                          monitor.bias_statistics(self, layer),
-                          monitor.weight_gradient_statistics(self, layer),
-                          monitor.bias_gradient_statistics(self, layer),
-                          monitor.sparsity(self, layer)]:
-                chainer.report(stats, self)
-
-    def report_activations(self, data, prefix):
-        xp = self.xp
-        data = data.data
-
-        chainer.report({
-            prefix + '/activations/min': xp.nanmin(data),
-            prefix + '/activations/max': xp.nanmax(data),
-            prefix + '/activations/std': xp.std(data),
-            prefix + '/activations/mean': xp.mean(data),
-            prefix + '/activations/nonzeros': xp.count_nonzero(data) / data.size,
-            prefix + '/activations/NaNcount': xp.isnan(data).sum() / data.size,
-            prefix + '/activations/infcount': xp.isinf(data).sum() / data.size
-        }, self)
-
-
 
 
 # TODO: rename class
