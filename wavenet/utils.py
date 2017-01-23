@@ -13,3 +13,12 @@ def binarize(images, xp=np):
     a Bernoulli distribution.
     """
     return (xp.random.uniform(size=images.shape) < images).astype('float32')
+
+
+def quantisize(images, levels):
+    return (np.digitize(images, np.arange(levels) / levels) - 1).astype('i')
+    # return (images * (levels - 1)).astype('i')
+
+
+def convert_to_rgb(images):
+    return xp.tile(images, [1, 3, 1, 1])
