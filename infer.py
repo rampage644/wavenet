@@ -31,8 +31,8 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
     for i in range(height):
         for j in range(width):
             for k in range(channels):
-                next_sample = utils.binarize(F.sigmoid(sample_fn(samples)).data, xp=chainer.cuda.cupy)
-                samples.data[:, k, i, j] = next_sample[:, k, i, j]
+                next_sample = utils.binarize(F.softmax(sample_fn(samples))[:, 1, :, :].data, xp=chainer.cuda.cupy)
+                samples.data[:, k, i, j] = next_sample[:, i, j]
 
     samples.to_cpu()
 
@@ -58,9 +58,11 @@ def main():
                         help='Number of hidden dimensions')
     parser.add_argument('--blocks_num', '-n', type=int, default=15,
                         help='Number of layers')
+    parser.add_argument('--levels', type=int, default=2,
+                        help='Level number to quantisize pixel values')
     args = parser.parse_args()
 
-    model = models.PixelCNN(1, args.hidden_dim, args.blocks_num, args.out_hidden_dim)
+    model = models.PixelCNN(1, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()

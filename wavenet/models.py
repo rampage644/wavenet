@@ -77,13 +77,13 @@ class ResidualBlockList(chainer.ChainList):
 
 
 class PixelCNN(chainer.Chain):
-    def __init__(self, in_channels, hidden_dims, block_num, out_hidden_dims, nobias=False):
+    def __init__(self, in_channels, hidden_dims, block_num, out_hidden_dims, out_dims, nobias=False):
         super(PixelCNN, self).__init__(
             conv1=MaskedConvolution2D(in_channels, hidden_dims, 7, pad=3, mask='A', nobias=nobias),
             blocks=ResidualBlockList(block_num, hidden_dims, nobias=nobias),
             conv2=L.Convolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv3=L.Convolution2D(out_hidden_dims, out_hidden_dims, 1, nobias=nobias),
-            conv4=L.Convolution2D(out_hidden_dims, 1, 1, nobias=nobias)
+            conv4=L.Convolution2D(out_hidden_dims, out_dims, 1, nobias=nobias)
         )
 
     def __call__(self, x):
@@ -100,11 +100,10 @@ class Classifier(chainer.Chain):
      def __init__(self, predictor):
          super(Classifier, self).__init__(predictor=predictor)
 
-     def __call__(self, x):
+     def __call__(self, x, t):
          y = self.predictor(x)
 
-         nll = F.sigmoid_cross_entropy(y, F.cast(x, 'i'), normalize=False)
-        #  nll = F.bernoulli_nll(x, y) / y.size
+        #  nll = F.sigmoid_cross_entropy(y, t, normalize=False)
+         nll = F.softmax_cross_entropy(y, t, normalize=False)
          chainer.report({'nll': nll}, self)
          return nll
-

@@ -40,16 +40,28 @@ def main():
                         help='Level number to quantisize pixel values')
     args = parser.parse_args()
 
+    model = models.Classifier(models.PixelCNN(
+        1, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels))
+
+    train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False) # shape is B, C, H, W
+    train_l = utils.quantisize(train, args.levels)
+    test_l = utils.quantisize(test, args.levels)
+
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
 
+        train = chainer.cuda.to_gpu(train_l.astype('f'), device=args.gpu)
+        test = chainer.cuda.to_gpu(test_l.astype('f'), device=args.gpu)
+        train_l = chainer.cuda.to_gpu(np.squeeze(train_l), device=args.gpu)
+        test_l = chainer.cuda.to_gpu(np.squeeze(test_l), device=args.gpu)
+
+    train = chainer.datasets.TupleDataset(train, train_l)
+    test = chainer.datasets.TupleDataset(test, test_l)
+
     optimizer = chainer.optimizers.Adam()
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.GradientHardClipping(-args.gradclip, args.gradclip))
-
-    train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False)
-    train, test = utils.binarize(train), utils.binarize(test)
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
