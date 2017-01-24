@@ -51,8 +51,8 @@ def main():
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
 
-        train = chainer.cuda.to_gpu(train_l.astype('f'), device=args.gpu)
-        test = chainer.cuda.to_gpu(test_l.astype('f'), device=args.gpu)
+        train = chainer.cuda.to_gpu(train_l.astype('f') / (args.levels - 1), device=args.gpu)
+        test = chainer.cuda.to_gpu(test_l.astype('f') / (args.levels - 1), device=args.gpu)
         train_l = chainer.cuda.to_gpu(np.squeeze(train_l), device=args.gpu)
         test_l = chainer.cuda.to_gpu(np.squeeze(test_l), device=args.gpu)
 

@@ -22,3 +22,8 @@ def quantisize(images, levels):
 
 def convert_to_rgb(images):
     return xp.tile(images, [1, 3, 1, 1])
+
+
+def sample_from(distribution):
+    batch_size, bins = distribution.shape
+    return np.array([np.random.choice(bins, p=distr) for distr in distribution])

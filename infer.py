@@ -31,8 +31,9 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
     for i in range(height):
         for j in range(width):
             for k in range(channels):
-                next_sample = utils.binarize(F.softmax(sample_fn(samples))[:, 1, :, :].data, xp=chainer.cuda.cupy)
-                samples.data[:, k, i, j] = next_sample[:, i, j]
+                probs = F.softmax(sample_fn(samples))[:, :, i, j]
+                _, level_count = probs.shape
+                samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / level_count
 
     samples.to_cpu()
 
