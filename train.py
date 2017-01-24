@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import argparse
 import sys
+import numpy as np
 
 import chainer
 import chainer.training
@@ -35,14 +36,10 @@ def main():
                         help='Number of layers')
     parser.add_argument('--gradclip', type=float, default=1.0,
                         help='Bound for gradient hard clipping')
+    parser.add_argument('--levels', type=int, default=2,
+                        help='Level number to quantisize pixel values')
     args = parser.parse_args()
 
-    # Set up a neural network to train
-    # Classifier reports softmax cross entropy loss and accuracy at every
-    # iteration, which will be used by the PrintReport extension below.
-    # XXX: 1 is for mnist dataset, 1 dimension - grayscale
-    # XXX: double hidden dims as stated in paper
-    model = models.Classifier(models.PixelCNN(1, args.hidden_dim, args.blocks_num, args.out_hidden_dim))
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
@@ -65,11 +62,11 @@ def main():
 
     trainer.extend(extensions.dump_graph('main/nll'))
     trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
-    trainer.extend(extensions.LogReport(trigger=(1000, 'iteration')))
+    trainer.extend(extensions.LogReport(trigger=(1, 'epoch')))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/nll', 'validation/main/nll', 'elapsed_time']))
     trainer.extend(extensions.PlotReport(
-        ['main/nll', 'validation/main/nll'], trigger=(1000, 'iteration')
+        ['main/nll', 'validation/main/nll'], trigger=(1, 'epoch')
     ))
 
     trainer.extend(extensions.ProgressBar())
