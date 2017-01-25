@@ -20,18 +20,18 @@ import wavenet.utils as utils
 
 def generate_and_save_samples(sample_fn, height, width, channels, count):
     def save_images(images, filename):
-        images = images.reshape((count, count, height, width))
-        images = images.transpose(1, 2, 0, 3)
-        images = images.reshape((height * count, width * count))
+        images = images.reshape((count, count, channels, height, width))
+        images = images.transpose(1, 3, 0, 4, 2)
+        images = images.reshape((height * count, width * count, channels))
         scipy.misc.toimage(images, cmin=0.0, cmax=1.0).save('{}.jpg'.format(filename))
 
     samples = chainer.Variable(
-        chainer.cuda.cupy.zeros((count ** 2, 1, height, width), dtype='float32'))
+        chainer.cuda.cupy.zeros((count ** 2, channels, height, width), dtype='float32'))
 
     for i in range(height):
         for j in range(width):
             for k in range(channels):
-                probs = F.softmax(sample_fn(samples))[:, :, i, j]
+                probs = F.softmax(sample_fn(samples))[:, :, k, i, j]
                 _, level_count = probs.shape
                 samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / level_count
 
@@ -63,7 +63,9 @@ def main():
                         help='Level number to quantisize pixel values')
     args = parser.parse_args()
 
-    model = models.PixelCNN(1, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
+    IN_CHANNELS = 3
+    # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
+    model = models.PixelCNN(IN_CHANNELS, args.hidden_dim * IN_CHANNELS, args.blocks_num, args.out_hidden_dim * IN_CHANNELS, args.levels)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
@@ -72,7 +74,7 @@ def main():
     def sample_fn(samples):
         return model(samples)
 
-    generate_and_save_samples(sample_fn, 28, 28, 1, 10)
+    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 10)
 
 
 if __name__ == '__main__':

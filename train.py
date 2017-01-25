@@ -38,12 +38,23 @@ def main():
                         help='Bound for gradient hard clipping')
     parser.add_argument('--levels', type=int, default=2,
                         help='Level number to quantisize pixel values')
+    parser.add_argument('--dataset', type=str, default='mnist',
+                        help='Dataset for training. Either mnist or cifar.')
     args = parser.parse_args()
 
+    IN_CHANNELS = 3  # RGB
+    # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
     model = models.Classifier(models.PixelCNN(
-        1, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels))
+        IN_CHANNELS, args.hidden_dim * IN_CHANNELS, args.blocks_num, args.out_hidden_dim * IN_CHANNELS, args.levels))
 
+    if args.dataset == 'mnist':
     train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False) # shape is B, C, H, W
+        train, test = utils.convert_to_rgb(train), utils.convert_to_rgb(test)
+    elif args.dataset == 'cifar':
+        train, test = chainer.datasets.get_cifar10(ndim=3, withlabel=False) # shape is B, C, H, W
+    else:
+        raise NotImplementedError('Dataset {} not supported'.format(args.dataset))
+
     train_l = utils.quantisize(train, args.levels)
     test_l = utils.quantisize(test, args.levels)
 
