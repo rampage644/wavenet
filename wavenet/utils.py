@@ -17,10 +17,9 @@ def binarize(images, xp=np):
 
 def quantisize(images, levels):
     return (np.digitize(images, np.arange(levels) / levels) - 1).astype('i')
-    # return (images * (levels - 1)).astype('i')
 
 
-def convert_to_rgb(images):
+def convert_to_rgb(images, xp=np):
     return xp.tile(images, [1, 3, 1, 1])
 
 
