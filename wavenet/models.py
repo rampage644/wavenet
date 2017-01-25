@@ -83,8 +83,10 @@ class PixelCNN(chainer.Chain):
             blocks=ResidualBlockList(block_num, hidden_dims, nobias=nobias),
             conv2=L.Convolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv3=L.Convolution2D(out_hidden_dims, out_hidden_dims, 1, nobias=nobias),
-            conv4=L.Convolution2D(out_hidden_dims, out_dims, 1, nobias=nobias)
+            conv4=L.Convolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
         )
+        self.in_channels = in_channels
+        self.out_dims = out_dims
 
     def __call__(self, x):
         h = F.relu(self.conv1(x))
@@ -92,6 +94,9 @@ class PixelCNN(chainer.Chain):
         h = F.relu(self.conv2(h))
         h = F.relu(self.conv3(h))
         h = self.conv4(h)
+        batch_size, _, height, width = h.shape
+        # XXX: other shape? Move `in_channels` somewhere
+        h = F.reshape(h, [batch_size, self.out_dims, self.in_channels, height, width])
         return h
 
 
