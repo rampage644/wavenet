@@ -1,4 +1,5 @@
 '''Models.'''
+#%%
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
@@ -20,16 +21,23 @@ class MaskedConvolution2D(L.Convolution2D):
             *args, **kwargs
         )
 
-        kh, kw = (self.ksize, ) * 2
-        pre_mask = self.xp.ones([kh, kw]).astype('f')
+        out_channels, in_channels, kh, kw = self.W.shape
+        pre_mask = self.xp.ones_like(self.W.data).astype('f')
         yc, xc = kh // 2, kw // 2
+        in_third, out_third = in_channels // 3, out_channels // 3
 
-        pre_mask[yc+1:, :] = 0.0
-        pre_mask[yc:, xc+1:] = 0.0
-        if mask == 'A':
-            pre_mask[yc, xc] = 0.0
+        # context masking - subsequent pixels won't hav access to next pixels (spatial dim)
+        pre_mask[:, :, yc+1:, :] = 0.0
+        pre_mask[:, :, yc:, xc+1:] = 0.0
 
-        self.mask = self.xp.broadcast_to(pre_mask, self.W.shape)
+        # same pixel masking - pixel won't access next color (conv filter dim)
+        pre_mask[:out_third, :, yc, xc] = 0.0
+        pre_mask[:, 2*in_third:, yc, xc] = 0.0
+        value = 1.0 if mask == 'B' else 0.0
+        for i in range(3):
+            pre_mask[out_third*i:out_third*(i+1), in_third*i:in_third*(i+1), yc, xc] = value
+
+        self.mask = pre_mask
 
     def __call__(self, x):
         if self.has_uninitialized_params:
@@ -38,7 +46,7 @@ class MaskedConvolution2D(L.Convolution2D):
 
         # TODO: using mask slows down computation a little
         return chainer.functions.connection.convolution_2d.convolution_2d(
-            x, self.W * self.mask, self.b, self.stride, self.pad, self.use_cudnn,
+            x, self.W, self.b, self.stride, self.pad, self.use_cudnn,
             deterministic=self.deterministic)
 
     def to_gpu(self, device=None):
