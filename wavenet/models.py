@@ -33,11 +33,11 @@ class MaskedConvolution2D(L.Convolution2D):
         # same pixel masking - pixel won't access next color (conv filter dim)
         # XXX: apply mask to all layers and not only first one?
         if in_channels == 3:
-        pre_mask[:out_third, :, yc, xc] = 0.0
-        pre_mask[:, 2*in_third:, yc, xc] = 0.0
-        value = 1.0 if mask == 'B' else 0.0
-        for i in range(3):
-            pre_mask[out_third*i:out_third*(i+1), in_third*i:in_third*(i+1), yc, xc] = value
+            pre_mask[:out_third, :, yc, xc] = 0.0
+            pre_mask[:, 2*in_third:, yc, xc] = 0.0
+            value = 1.0 if mask == 'B' else 0.0
+            for i in range(3):
+                pre_mask[out_third*i:out_third*(i+1), in_third*i:in_third*(i+1), yc, xc] = value
 
         self.mask = pre_mask
 
