@@ -5,7 +5,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import numpy
+import numpy as np
 
 import chainer
 import chainer.functions as F
@@ -21,21 +21,27 @@ class MaskedConvolution2D(L.Convolution2D):
             *args, **kwargs
         )
 
-        out_channels, in_channels, kh, kw = self.W.shape
+        Cout, Cin, kh, kw = self.W.shape
         pre_mask = self.xp.ones_like(self.W.data).astype('f')
         yc, xc = kh // 2, kw // 2
-        in_third, out_third = in_channels // 3, out_channels // 3
 
         # context masking - subsequent pixels won't hav access to next pixels (spatial dim)
         pre_mask[:, :, yc+1:, :] = 0.0
         pre_mask[:, :, yc:, xc+1:] = 0.0
 
         # same pixel masking - pixel won't access next color (conv filter dim)
-        pre_mask[:out_third, :, yc, xc] = 0.0
-        pre_mask[:, 2*in_third:, yc, xc] = 0.0
-        value = 1.0 if mask == 'B' else 0.0
-        for i in range(3):
-            pre_mask[out_third*i:out_third*(i+1), in_third*i:in_third*(i+1), yc, xc] = value
+        def bmask(i_out, i_in):
+            cout_idx = np.expand_dims(np.arange(Cout) % 3 == i_out, 1)
+            cin_idx = np.expand_dims(np.arange(Cin) % 3 == i_in, 0)
+            a1, a2 = np.broadcast_arrays(cout_idx, cin_idx)
+            return a1 * a2
+
+        for j in range(3):
+            pre_mask[bmask(j, j), yc, xc] = 0.0 if mask == 'A' else 1.0
+
+        pre_mask[bmask(1, 0), yc, xc] = 0.0
+        pre_mask[bmask(2, 0), yc, xc] = 0.0
+        pre_mask[bmask(2, 1), yc, xc] = 0.0
 
         self.mask = pre_mask
 
@@ -102,9 +108,11 @@ class PixelCNN(chainer.Chain):
         h = F.relu(self.conv2(h))
         h = F.relu(self.conv3(h))
         h = self.conv4(h)
+
         batch_size, _, height, width = h.shape
-        # XXX: other shape? Move `in_channels` somewhere
-        h = F.reshape(h, [batch_size, self.out_dims, self.in_channels, height, width])
+        h = F.reshape(h, [batch_size, self.in_channels, self.out_dims, height, width])
+        h = F.transpose(h, [0, 2, 1, 3, 4])
+
         return h
 
 
