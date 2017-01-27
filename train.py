@@ -45,7 +45,7 @@ def main():
     IN_CHANNELS = 3  # RGB
     # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
     model = models.Classifier(models.PixelCNN(
-        IN_CHANNELS, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels))
+        IN_CHANNELS, 2 * args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels))
 
     if args.dataset == 'mnist':
         train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False) # shape is B, C, H, W
