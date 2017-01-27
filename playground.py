@@ -17,6 +17,7 @@ import chainer.training.extensions as extensions
 import chainer.links as L
 
 import wavenet.utils as utils
+import wavenet.models as models
 
 
 #%%
@@ -60,7 +61,7 @@ rt.shape
 
 
 #%%
-Cin, Cout, kh, kw = 6, 10, 5, 5
+Cin, Cout, kh, kw = 3, 10, 5, 5
 mask = np.ones([Cout, Cin, kh, kw])
 
 yc, xc = kh // 2, kw // 2
@@ -73,14 +74,6 @@ value = 0.0 if mtype == 'A' else 1.0
 
 
 
-
-a1 * a2
-
-mask[a1 * a2] = 0
-cout_idx.shape
-cin_idx.shape
-
-mask
 
 def bmask(i_out, i_in):
     cout_idx = np.expand_dims(np.arange(Cout) % 3 == i_out, 1)
@@ -97,9 +90,15 @@ mask[bmask(2, 0), yc, xc] = 0.0
 mask[bmask(2, 1), yc, xc] = 0.0
 
 
+mask[bmask(0, 1), yc, xc] = .0
+mask[bmask(0, 2), yc, xc] = .0
 
+mask[bmask(1, 2), yc, xc] = .0
 
 mask[:, :, yc, xc]
 
 
+#%%
+link = models.MaskedConvolution2D(Cin, Cout, 5)
 
+link.mask[:, :, yc, xc]

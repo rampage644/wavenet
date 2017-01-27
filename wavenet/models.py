@@ -12,7 +12,6 @@ import chainer.functions as F
 import chainer.links as L
 
 import wavenet.utils as utils
-import wavenet.monitor as monitor
 
 
 class MaskedConvolution2D(L.Convolution2D):
@@ -39,9 +38,9 @@ class MaskedConvolution2D(L.Convolution2D):
         for j in range(3):
             pre_mask[bmask(j, j), yc, xc] = 0.0 if mask == 'A' else 1.0
 
-        pre_mask[bmask(1, 0), yc, xc] = 0.0
-        pre_mask[bmask(2, 0), yc, xc] = 0.0
-        pre_mask[bmask(2, 1), yc, xc] = 0.0
+        pre_mask[bmask(0, 1), yc, xc] = 0.0
+        pre_mask[bmask(0, 2), yc, xc] = 0.0
+        pre_mask[bmask(1, 2), yc, xc] = 0.0
 
         self.mask = pre_mask
 
@@ -50,7 +49,6 @@ class MaskedConvolution2D(L.Convolution2D):
             with chainer.cuda.get_device(self._device_id):
                 self._initialize_params(x.shape[1])
 
-        # TODO: using mask slows down computation a little
         return chainer.functions.connection.convolution_2d.convolution_2d(
             x, self.W * self.mask, self.b, self.stride, self.pad, self.use_cudnn,
             deterministic=self.deterministic)
