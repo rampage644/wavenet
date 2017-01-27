@@ -61,9 +61,9 @@ class MaskedConvolution2D(L.Convolution2D):
 class ResidualBlock(chainer.Chain):
     def __init__(self, in_channels, nobias=False):
         super(ResidualBlock, self).__init__(
-            conv1=L.Convolution2D(in_channels, in_channels // 2, 1, nobias=nobias),
+            conv1=MaskedConvolution2D(in_channels, in_channels // 2, 1, nobias=nobias),
             conv2=MaskedConvolution2D(in_channels // 2, in_channels // 2, 3, pad=1, nobias=nobias),
-            conv3=L.Convolution2D(in_channels // 2, in_channels, 1, nobias=nobias)
+            conv3=MaskedConvolution2D(in_channels // 2, in_channels, 1, nobias=nobias)
         )
 
     def __call__(self, x):
@@ -91,8 +91,8 @@ class PixelCNN(chainer.Chain):
         super(PixelCNN, self).__init__(
             conv1=MaskedConvolution2D(in_channels, hidden_dims, 7, pad=3, mask='A', nobias=nobias),
             blocks=ResidualBlockList(block_num, hidden_dims, nobias=nobias),
-            conv2=L.Convolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
-            conv3=L.Convolution2D(out_hidden_dims, out_hidden_dims, 1, nobias=nobias),
+            conv2=MaskedConvolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
+            conv3=MaskedConvolution2D(out_hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv4=L.Convolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
         )
         self.in_channels = in_channels
