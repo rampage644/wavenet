@@ -45,10 +45,10 @@ def main():
     IN_CHANNELS = 3  # RGB
     # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
     model = models.Classifier(models.PixelCNN(
-        IN_CHANNELS, args.hidden_dim * IN_CHANNELS, args.blocks_num, args.out_hidden_dim * IN_CHANNELS, args.levels))
+        IN_CHANNELS, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels))
 
     if args.dataset == 'mnist':
-    train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False) # shape is B, C, H, W
+        train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False) # shape is B, C, H, W
         train, test = utils.convert_to_rgb(train), utils.convert_to_rgb(test)
     elif args.dataset == 'cifar':
         train, test = chainer.datasets.get_cifar10(ndim=3, withlabel=False) # shape is B, C, H, W
