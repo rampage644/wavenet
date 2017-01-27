@@ -31,13 +31,11 @@ class MaskedConvolution2D(L.Convolution2D):
         pre_mask[:, :, yc:, xc+1:] = 0.0
 
         # same pixel masking - pixel won't access next color (conv filter dim)
-        # XXX: apply mask to all layers and not only first one?
-        if in_channels == 3:
-            pre_mask[:out_third, :, yc, xc] = 0.0
-            pre_mask[:, 2*in_third:, yc, xc] = 0.0
-            value = 1.0 if mask == 'B' else 0.0
-            for i in range(3):
-                pre_mask[out_third*i:out_third*(i+1), in_third*i:in_third*(i+1), yc, xc] = value
+        pre_mask[:out_third, :, yc, xc] = 0.0
+        pre_mask[:, 2*in_third:, yc, xc] = 0.0
+        value = 1.0 if mask == 'B' else 0.0
+        for i in range(3):
+            pre_mask[out_third*i:out_third*(i+1), in_third*i:in_third*(i+1), yc, xc] = value
 
         self.mask = pre_mask
 
@@ -93,7 +91,7 @@ class PixelCNN(chainer.Chain):
             blocks=ResidualBlockList(block_num, hidden_dims, nobias=nobias),
             conv2=MaskedConvolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv3=MaskedConvolution2D(out_hidden_dims, out_hidden_dims, 1, nobias=nobias),
-            conv4=L.Convolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
+            conv4=MaskedConvolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
         )
         self.in_channels = in_channels
         self.out_dims = out_dims
