@@ -42,18 +42,10 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
 
 def main():
     parser = argparse.ArgumentParser(description='PixelCNN')
-    parser.add_argument('--batchsize', '-b', type=int, default=16,
-                        help='Number of images in each mini-batch')
-    parser.add_argument('--epoch', '-e', type=int, default=20,
-                        help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
-    parser.add_argument('--resume', '-r', default='',
-                        help='Resume the training from snapshot')
-    parser.add_argument('--out', '-o', default='',
-                        help='Output directory')
-    parser.add_argument('--unit', '-u', type=int, default=1000,
-                        help='Number of units')
+    parser.add_argument('--model', '-m', default='',
+                        help='Path to model for generation')
     parser.add_argument('--hidden_dim', '-d', type=int, default=128,
                         help='Number of hidden dimensions')
     parser.add_argument('--out_hidden_dim', type=int, default=16,
@@ -70,12 +62,12 @@ def main():
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
-    chainer.serializers.load_npz('pixelcnn', model)
+    chainer.serializers.load_npz(args.model, model)
 
     def sample_fn(samples):
         return model(samples)
 
-    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 10)
+    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 9)
 
 
 if __name__ == '__main__':
