@@ -23,7 +23,7 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
         images = images.reshape((count, count, channels, height, width))
         images = images.transpose(1, 3, 0, 4, 2)
         images = images.reshape((height * count, width * count, channels))
-        scipy.misc.toimage(images, cmin=0.0, cmax=1.0).save('{}.jpg'.format(filename))
+        scipy.misc.toimage(images, cmin=0.0, cmax=255.0).save('{}.jpg'.format(filename))
 
     samples = chainer.Variable(
         chainer.cuda.cupy.zeros((count ** 2, channels, height, width), dtype='float32'))
@@ -34,10 +34,11 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
                 probs = F.softmax(sample_fn(samples))[:, :, k, i, j]
                 _, level_count = probs.shape
                 samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / level_count
+                print('\r{:.2f}%'.format(100.0 * (i * width + j + 1) / height / width), end='')
 
     samples.to_cpu()
 
-    save_images(samples.data, 'samples')
+    save_images(samples.data * 255.0, 'samples')
 
 def main():
     parser = argparse.ArgumentParser(description='PixelCNN')
