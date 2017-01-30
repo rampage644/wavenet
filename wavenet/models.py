@@ -123,6 +123,6 @@ class Classifier(chainer.Chain):
          y = self.predictor(x)
 
         #  nll = F.sigmoid_cross_entropy(y, t, normalize=False)
-         nll = F.softmax_cross_entropy(y, t, normalize=False)
+         nll = F.softmax_cross_entropy(y, t, normalize=False) / self.predictor.out_dims
          chainer.report({'nll': nll}, self)
          return nll
