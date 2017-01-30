@@ -83,23 +83,18 @@ def main():
 
     trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu))
 
-    trainer.extend(extensions.dump_graph('main/nll'))
-    trainer.extend(extensions.snapshot(), trigger=(args.epoch, 'epoch'))
-    trainer.extend(extensions.LogReport(trigger=(1, 'epoch')))
+    trainer.extend(extensions.snapshot(), trigger=(1, 'epoch'))
+    trainer.extend(extensions.snapshot_object(
+        model.predictor, 'pixelcnn_{.updater.iteration}'), trigger=(1, 'epoch'))
+    trainer.extend(extensions.LogReport(trigger=(1000, 'iteration')))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/nll', 'validation/main/nll', 'elapsed_time']))
-    trainer.extend(extensions.PlotReport(
-        ['main/nll', 'validation/main/nll'], trigger=(1, 'epoch')
-    ))
-
     trainer.extend(extensions.ProgressBar())
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
 
     trainer.run()
-
-    chainer.serializers.save_npz('pixelcnn', model.predictor)
 
 
 if __name__ == '__main__':
