@@ -36,6 +36,8 @@ def main():
                         help='Number of layers')
     parser.add_argument('--gradclip', type=float, default=1.0,
                         help='Bound for gradient hard clipping')
+    parser.add_argument('--learning_rate', type=float, default=0.001,
+                        help='Bound for gradient hard clipping')
     parser.add_argument('--levels', type=int, default=2,
                         help='Level number to quantisize pixel values')
     parser.add_argument('--dataset', type=str, default='mnist',
@@ -70,9 +72,8 @@ def main():
     train = chainer.datasets.TupleDataset(train, train_l)
     test = chainer.datasets.TupleDataset(test, test_l)
 
-    optimizer = chainer.optimizers.Adam()
+    optimizer = chainer.optimizers.Adam(args.learning_rate)
     optimizer.setup(model)
-    optimizer.add_hook(chainer.optimizer.GradientHardClipping(-args.gradclip, args.gradclip))
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,
