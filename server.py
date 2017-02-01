@@ -26,6 +26,28 @@ TRAIN_KEY, TEST_KEY = 'main/nll', 'validation/main/nll'
 WINDOW_SIZE = 10
 
 
+PREFIX_KEYS = [
+    'predictor'
+]
+SUFFIX_KEYS = [
+    '{}/max',
+    '{}/mean',
+    '{}/min',
+    '{}/percentile/0',
+    '{}/percentile/1',
+    '{}/percentile/2',
+    '{}/percentile/3',
+    '{}/percentile/4',
+    '{}/percentile/5',
+    '{}/percentile/6',
+    '{}/std',
+]
+def _keys(symbol):
+    return [key.forma(symbol) for key in SUFFIX_KEYS]
+
+KEYS = _keys('W/data') + _keys('W/grad') + _keys('b/data') + _keys('b/grad')
+
+
 def callback():
     with open(FILENAME) as ifile:
         data = json.load(ifile)
