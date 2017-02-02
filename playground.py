@@ -61,7 +61,7 @@ rt.shape
 
 
 #%%
-Cin, Cout, kh, kw = 3, 10, 5, 5
+
 mask = np.ones([Cout, Cin, kh, kw])
 
 yc, xc = kh // 2, kw // 2
@@ -99,6 +99,35 @@ mask[:, :, yc, xc]
 
 
 #%%
-link = models.MaskedConvolution2D(Cin, Cout, 5)
+import importlib
+importlib.reload(models)
 
-link.mask[:, :, yc, xc]
+Cin, Cout, kh, kw = 5, 12, 3, 3
+link = models.MaskedConvolution2D(Cin, Cout, 3, mask='B', pad=1)
+link.W.data = np.ones_like(link.W.data)
+
+# model = models.PixelCNN(3, 16, 5, 8, 100)
+# zeros = np.zeros([1, 3, 11, 13], dtype='f')
+
+img = np.ones([1, 5, 6, 7]).astype('f')
+img[:, 1, :, :] *= 10
+img[:, 2, :, :] *= 100
+img[:, 4, :, :] *= 10
+img[:, 5, :, :] *= 100
+img[:, 7, :, :] *= 10
+img[:, 8, :, :] *= 100
+
+h = link(img)
+
+
+out = link(img).data.astype('i')
+batch_size, channels, height, width = out.shape
+print(batch_size, channels, height, width)
+print(out[0, 0], out[0, 1], out[0, 2], out[0, 3], out[0, 11],  sep='\n')
+out = np.reshape(out, [batch_size, 4, 3, height, width])
+out = np.transpose(out, [0, 2, 1, 3, 4])
+print(out[0, :, 0], out[0, :, 1], out[0, :, 2], sep='\n')
+
+out.shape
+
+122*4
