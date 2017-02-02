@@ -29,8 +29,18 @@ class MaskedConvolution2D(L.Convolution2D):
         pre_mask[:, :, yc:, xc+1:] = 0.0
 
         # same pixel masking - pixel won't access next color (conv filter dim)
-        # TODO: Implement proper channel masking
-        pre_mask[:, :, yc, xc] = 0.0 if mask == 'A' else 1.0
+        def bmask(i_out, i_in):
+            cout_idx = np.expand_dims(np.arange(Cout) % 3 == i_out, 1)
+            cin_idx = np.expand_dims(np.arange(Cin) % 3 == i_in, 0)
+            a1, a2 = np.broadcast_arrays(cout_idx, cin_idx)
+            return a1 * a2
+
+        for j in range(3):
+            pre_mask[bmask(j, j), yc, xc] = 0.0 if mask == 'A' else 1.0
+
+        pre_mask[bmask(0, 1), yc, xc] = 0.0
+        pre_mask[bmask(0, 2), yc, xc] = 0.0
+        pre_mask[bmask(1, 2), yc, xc] = 0.0
 
         self.mask = pre_mask
 
@@ -63,7 +73,7 @@ class ResidualBlock(chainer.Chain):
         h = self.conv2(F.relu(h))
         h = self.conv3(F.relu(h))
 
-        return F.relu(x + h)
+        return x + h
 
 
 class ResidualBlockList(chainer.ChainList):
@@ -96,8 +106,7 @@ class PixelCNN(chainer.Chain):
         h = self.conv4(F.relu(h))
 
         batch_size, _, height, width = h.shape
-        h = F.reshape(h, [batch_size, self.in_channels, self.out_dims, height, width])
-        h = F.transpose(h, [0, 2, 1, 3, 4])
+        h = F.reshape(h, [batch_size, self.out_dims, self.in_channels, height, width])
 
         return h
 
@@ -110,7 +119,6 @@ class Classifier(chainer.Chain):
      def __call__(self, x, t):
          y = self.predictor(x)
 
-        #  nll = F.sigmoid_cross_entropy(y, t, normalize=False)
          nll = F.softmax_cross_entropy(y, t, normalize=False)
          chainer.report({'nll': nll}, self)
          return nll
