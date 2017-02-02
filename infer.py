@@ -18,12 +18,12 @@ import wavenet.models as models
 import wavenet.utils as utils
 
 
-def generate_and_save_samples(sample_fn, height, width, channels, count):
-    def save_images(images, filename):
+def generate_and_save_samples(sample_fn, height, width, channels, count, filename):
+    def save_images(images):
         images = images.reshape((count, count, channels, height, width))
         images = images.transpose(1, 3, 0, 4, 2)
         images = images.reshape((height * count, width * count, channels))
-        scipy.misc.toimage(images, cmin=0.0, cmax=255.0).save('{}.jpg'.format(filename))
+        scipy.misc.toimage(images, cmin=0.0, cmax=255.0).save(filename)
 
     samples = chainer.Variable(
         chainer.cuda.cupy.zeros((count ** 2, channels, height, width), dtype='float32'))
@@ -39,7 +39,7 @@ def generate_and_save_samples(sample_fn, height, width, channels, count):
 
     samples.to_cpu()
 
-    save_images(samples.data * 255.0, 'samples')
+    save_images(samples.data * 255.0)
 
 def main():
     parser = argparse.ArgumentParser(description='PixelCNN')
@@ -55,6 +55,8 @@ def main():
                         help='Number of layers')
     parser.add_argument('--levels', type=int, default=2,
                         help='Level number to quantisize pixel values')
+    parser.add_argument('--output', '-o', type=str, default='samples.jpg',
+                        help='Output filename')
     args = parser.parse_args()
 
     IN_CHANNELS = 3
@@ -68,7 +70,7 @@ def main():
     def sample_fn(samples):
         return model(samples)
 
-    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 9)
+    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 9, args.output)
 
 
 if __name__ == '__main__':
