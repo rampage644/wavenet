@@ -29,18 +29,8 @@ class MaskedConvolution2D(L.Convolution2D):
         pre_mask[:, :, yc:, xc+1:] = 0.0
 
         # same pixel masking - pixel won't access next color (conv filter dim)
-        def bmask(i_out, i_in):
-            cout_idx = np.expand_dims(np.arange(Cout) % 3 == i_out, 1)
-            cin_idx = np.expand_dims(np.arange(Cin) % 3 == i_in, 0)
-            a1, a2 = np.broadcast_arrays(cout_idx, cin_idx)
-            return a1 * a2
-
-        for j in range(3):
-            pre_mask[bmask(j, j), yc, xc] = 0.0 if mask == 'A' else 1.0
-
-        pre_mask[bmask(0, 1), yc, xc] = 0.0
-        pre_mask[bmask(0, 2), yc, xc] = 0.0
-        pre_mask[bmask(1, 2), yc, xc] = 0.0
+        # TODO: Implement proper masking
+        pre_mask[:, :, yc, xc] = 0.0 if mask == 'A' else 1.0
 
         self.mask = pre_mask
 
