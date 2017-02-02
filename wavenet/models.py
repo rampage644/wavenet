@@ -29,7 +29,7 @@ class MaskedConvolution2D(L.Convolution2D):
         pre_mask[:, :, yc:, xc+1:] = 0.0
 
         # same pixel masking - pixel won't access next color (conv filter dim)
-        # TODO: Implement proper masking
+        # TODO: Implement proper channel masking
         pre_mask[:, :, yc, xc] = 0.0 if mask == 'A' else 1.0
 
         self.mask = pre_mask
@@ -59,9 +59,9 @@ class ResidualBlock(chainer.Chain):
         )
 
     def __call__(self, x):
-        h = F.relu(self.conv1(x))
-        h = F.relu(self.conv2(h))
-        h = self.conv3(h)
+        h = self.conv1(F.relu(x))
+        h = self.conv2(F.relu(h))
+        h = self.conv3(F.relu(h))
 
         return F.relu(x + h)
 
@@ -84,18 +84,16 @@ class PixelCNN(chainer.Chain):
             conv1=MaskedConvolution2D(in_channels, hidden_dims, 7, pad=3, mask='A', nobias=nobias),
             blocks=ResidualBlockList(block_num, hidden_dims, nobias=nobias),
             conv2=MaskedConvolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
-            conv3=MaskedConvolution2D(out_hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv4=MaskedConvolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
         )
         self.in_channels = in_channels
         self.out_dims = out_dims
 
     def __call__(self, x):
-        h = F.relu(self.conv1(x))
+        h = self.conv1(x)
         h = self.blocks(h)
-        h = F.relu(self.conv2(h))
-        h = F.relu(self.conv3(h))
-        h = self.conv4(h)
+        h = self.conv2(F.relu(h))
+        h = self.conv4(F.relu(h))
 
         batch_size, _, height, width = h.shape
         h = F.reshape(h, [batch_size, self.in_channels, self.out_dims, height, width])
