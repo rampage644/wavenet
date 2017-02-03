@@ -14,6 +14,7 @@ import chainer.training.extensions as extensions
 
 import wavenet.models as models
 import wavenet.utils as utils
+import wavenet.parameter_statistics as stats
 
 
 def main():
@@ -42,6 +43,8 @@ def main():
                         help='Level number to quantisize pixel values')
     parser.add_argument('--dataset', type=str, default='mnist',
                         help='Dataset for training. Either mnist or cifar.')
+    parser.add_argument('--stats', type=bool, default=False,
+                        help='Collect layerwise statistics')
     args = parser.parse_args()
 
     IN_CHANNELS = 3  # RGB
@@ -82,15 +85,21 @@ def main():
     updater = chainer.training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
+    log_trigger = (1, 'epoch')
     trainer.extend(extensions.Evaluator(test_iter, model, device=args.gpu))
 
     trainer.extend(extensions.snapshot(), trigger=(1, 'epoch'))
     trainer.extend(extensions.snapshot_object(
         model.predictor, 'pixelcnn_{.updater.iteration}'), trigger=(1, 'epoch'))
-    trainer.extend(extensions.LogReport(trigger=(1000, 'iteration')))
+    trainer.extend(extensions.LogReport(trigger=log_trigger))
     trainer.extend(extensions.PrintReport(
         ['epoch', 'iteration', 'main/nll', 'validation/main/nll', 'elapsed_time']))
     trainer.extend(extensions.ProgressBar())
+    if args.stats:
+        trainer.extend(stats.ParameterStatistics([
+            model.predictor.conv1,
+            model.predictor.conv2,
+            model.predictor.conv4], trigger=log_trigger), trigger=log_trigger)
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
