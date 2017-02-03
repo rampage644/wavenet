@@ -118,6 +118,13 @@ def _sparsity(x):
     return x.size - cuda.get_array_module(x).count_nonzero(x)
 
 
+def _ratio(x):
+    xp = cuda.get_array_module(x)
+    assert len(x) % 2 == 0, 'Cannot compute ratio for shape {}'.format(x.shape)
+    length = len(x) // 2
+    return xp.log10(xp.linalg.norm(x[length:]) / xp.linalg.norm(x[:length]))
+
+
 class ParameterStatistics(extension.Extension):
 
     """Trainer extension to report parameter statistics.
@@ -164,6 +171,8 @@ class ParameterStatistics(extension.Extension):
         self._summary = reporter.DictSummary()
         self._targets = [('W', 'data'), ('b', 'data'),
                          ('W', 'grad'), ('b', 'grad')]
+        self._ratio_targets = [(('W'), ('data', 'grad')),
+                               (('b'), ('data', 'grad'))]
         self._sparsity_targets = []
 
         if sparsity:
@@ -188,7 +197,6 @@ class ParameterStatistics(extension.Extension):
             trainer (~chainer.training.Trainer): Associated trainer that
                 invoked this extension.
         """
-
         for link in self._links:
             for target in self._targets:
                 stats = self.get_statistics(link, *target)
@@ -197,6 +205,11 @@ class ParameterStatistics(extension.Extension):
 
             for target in self._sparsity_targets:
                 stats = self.get_sparsity(link, *target)
+                stats = self.post_process(stats)
+                self._summary.add(stats)
+
+            for target in self._ratio_targets:
+                stats = self.get_ratio(link, *target)
                 stats = self.post_process(stats)
                 self._summary.add(stats)
 
@@ -224,6 +237,10 @@ class ParameterStatistics(extension.Extension):
     def sparsity(self, params):
         return _sparsity(params)
 
+
+    def ratio(self, params):
+        return _ratio(params)
+
     def get_statistics(self, link, param_names, attr_names):
 
         key = _statistic_key(link, param_names, attr_names)
@@ -239,7 +256,6 @@ class ParameterStatistics(extension.Extension):
         return stats
 
     def get_sparsity(self, link, param_names, attr_names):
-
         key = _statistic_key(link, param_names, attr_names)
         key += '/zeros'
 
@@ -247,3 +263,12 @@ class ParameterStatistics(extension.Extension):
         zeros = self.sparsity(params)
 
         return { key: zeros }
+
+    def get_ratio(self, link, param_names, attr_names):
+        key = _statistic_key(link, param_names, attr_names)
+        key += '/ratio'
+
+        params = _flatten_link(link, param_names, attr_names)
+        ratio = self.ratio(params)
+
+        return { key: ratio }
