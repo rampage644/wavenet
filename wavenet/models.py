@@ -60,39 +60,70 @@ class MaskedConvolution2D(L.Convolution2D):
         return res
 
 
-class ResidualBlock(chainer.Chain):
-    def __init__(self, in_channels, nobias=False):
-        super(ResidualBlock, self).__init__(
-            conv1=MaskedConvolution2D(in_channels, in_channels // 2, 1, nobias=nobias),
-            conv2=MaskedConvolution2D(in_channels // 2, in_channels // 2, 3, pad=1, nobias=nobias),
-            conv3=MaskedConvolution2D(in_channels // 2, in_channels, 1, nobias=nobias)
-        )
+class CroppedConvolution(L.Convolution2D):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
 
     def __call__(self, x):
-        h = self.conv1(F.relu(x))
-        h = self.conv2(F.relu(h))
-        h = self.conv3(F.relu(h))
+        ret = super().__call__(x)
+        kh, kw = self.ksize
+        pad_h, pad_w = self.pad
+        h_crop = -(kh + 1) if pad_h == kh else None
+        w_crop = -(kw + 1) if pad_w == kw else None
+        return ret[:, :, :h_crop, :w_crop]
 
-        return x + h
+
+class ResidualBlock(chainer.Chain):
+    def __init__(self, in_channels, out_channels, filter_size, mask='B', nobias=False):
+        super(ResidualBlock, self).__init__(
+            vertical_conv=CroppedConvolution(
+                in_channels, 2 * out_channels, ksize=[filter_size//2+1, filter_size],
+                pad=[filter_size//2+1, filter_size//2]),
+            v_to_h_conv=MaskedConvolution2D(2 * out_channels, 2 * out_channels, 1, mask=mask),
+            vertical_gate_conv=L.Convolution2D(2*out_channels, 2*out_channels, 1),
+            horizontal_conv=CroppedConvolution(
+                in_channels, 2 * out_channels, ksize=[1, filter_size//2+1],
+                pad=[0, filter_size//2+1]),
+            horizontal_gate_conv=L.Convolution2D(2*out_channels, 2*out_channels, 1),
+            horizontal_output=MaskedConvolution2D(out_channels, out_channels, 1, mask=mask)
+        )
+
+    def _crop(self, x, ksize):
+        kh, kw = ksize
+        return x[:, :, ]
+
+    def __call__(self, v, h):
+        v = self.vertical_conv(v)
+        to_vertical = self.v_to_h_conv(v)
+
+        v_t, v_s = F.split_axis(self.vertical_gate_conv(v), 2, axis=1)
+        v = F.tanh(v_t) * F.sigmoid(v_s)
+
+        h_ = self.horizontal_conv(h)
+        h_t, h_s = F.split_axis(self.horizontal_gate_conv(h_ + to_vertical), 2, axis=1)
+        h = self.horizontal_output(F.tanh(h_t) * F.sigmoid(h_s))
+
+        return v, h
 
 
 class ResidualBlockList(chainer.ChainList):
-    def __init__(self, block_num, hidden_dims, mask='B', nobias=False):
-        blocks = [ResidualBlock(hidden_dims, nobias=nobias) for _ in range(block_num)]
+    def __init__(self, block_num, *args, **kwargs):
+        blocks = [ResidualBlock(*args, **kwargs) for _ in range(block_num)]
         super(ResidualBlockList, self).__init__(*blocks)
 
-    def __call__(self, x):
-        h = x
+    def __call__(self, v, h):
         for block in self:
-            h = block(h)
-        return h
+            v_, h_ = block(v, h)
+            v, h = v_, h + h_
+        return v, h
 
 
 class PixelCNN(chainer.Chain):
     def __init__(self, in_channels, hidden_dims, block_num, out_hidden_dims, out_dims, nobias=False):
         super(PixelCNN, self).__init__(
-            conv1=MaskedConvolution2D(in_channels, hidden_dims, 7, pad=3, mask='A', nobias=nobias),
-            blocks=ResidualBlockList(block_num, hidden_dims, nobias=nobias),
+            conv1=ResidualBlock(3, hidden_dims, 7, mask='A', nobias=nobias),
+            blocks=ResidualBlockList(block_num, hidden_dims, hidden_dims, 3, nobias=nobias),
             conv2=MaskedConvolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv4=MaskedConvolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
         )
@@ -100,8 +131,9 @@ class PixelCNN(chainer.Chain):
         self.out_dims = out_dims
 
     def __call__(self, x):
-        h = self.conv1(x)
-        h = self.blocks(h)
+        v, h = self.conv1(x, x)
+        # XXX: Consider doing something with vertical stack output as well
+        _, h = self.blocks(v, h)
         h = self.conv2(F.relu(h))
         h = self.conv4(F.relu(h))
 
