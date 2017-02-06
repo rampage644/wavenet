@@ -122,7 +122,7 @@ class ResidualBlockList(chainer.ChainList):
 class PixelCNN(chainer.Chain):
     def __init__(self, in_channels, hidden_dims, block_num, out_hidden_dims, out_dims, nobias=False):
         super(PixelCNN, self).__init__(
-            conv1=ResidualBlock(3, hidden_dims, 7, mask='A', nobias=nobias),
+            conv1=ResidualBlock(in_channels, hidden_dims, 7, mask='A', nobias=nobias),
             blocks=ResidualBlockList(block_num, hidden_dims, hidden_dims, 3, nobias=nobias),
             conv2=MaskedConvolution2D(hidden_dims, out_hidden_dims, 1, nobias=nobias),
             conv4=MaskedConvolution2D(out_hidden_dims, out_dims * in_channels, 1, nobias=nobias)
