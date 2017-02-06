@@ -57,6 +57,8 @@ def main():
                         help='Level number to quantisize pixel values')
     parser.add_argument('--output', '-o', type=str, default='samples.jpg',
                         help='Output filename')
+    parser.add_argument('--label', '-l', type=np.int32, default=0,
+                        help='Class label to generate')
     args = parser.parse_args()
 
     IN_CHANNELS = 3
@@ -68,7 +70,8 @@ def main():
     chainer.serializers.load_npz(args.model, model)
 
     def sample_fn(samples):
-        return model(samples)
+        B, C, H, W = samples.shape
+        return model(samples, np.ones(B).astype('i') * args.label)
 
     generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 9, args.output)
 
