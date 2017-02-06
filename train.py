@@ -17,6 +17,12 @@ import wavenet.utils as utils
 import wavenet.parameter_statistics as stats
 
 
+DATA_LOADER = {
+    'mnist': chainer.datasets.get_mnist,
+    'cifar': chainer.datasets.get_cifar10,
+}
+
+
 def main():
     parser = argparse.ArgumentParser(description='PixelCNN')
     parser.add_argument('--batchsize', '-b', type=int, default=16,
@@ -52,13 +58,14 @@ def main():
     model = models.Classifier(models.PixelCNN(
         IN_CHANNELS, 2 * args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels))
 
+    loader = DATA_LOADER[args.dataset]
+    train, test = loader(ndim=3, withlabel=True) # shape is B, C, H, W
+    # XXX: Better way to get classes?
+    train_class, test_class = utils.extract_labels(train), utils.extract_labels(test)
+    train, test = utils.extract_images(train), utils.extract_images(test)
+
     if args.dataset == 'mnist':
-        train, test = chainer.datasets.get_mnist(ndim=3, withlabel=False) # shape is B, C, H, W
-        train, test = utils.convert_to_rgb(train), utils.convert_to_rgb(test)
-    elif args.dataset == 'cifar':
-        train, test = chainer.datasets.get_cifar10(ndim=3, withlabel=False) # shape is B, C, H, W
-    else:
-        raise NotImplementedError('Dataset {} not supported'.format(args.dataset))
+        train, test = utils.convert=utils.convert_to_rgb(train), utils.convert_to_rgb(test)
 
     train_l = utils.quantisize(train, args.levels)
     test_l = utils.quantisize(test, args.levels)
@@ -72,8 +79,8 @@ def main():
         train_l = chainer.cuda.to_gpu(np.squeeze(train_l), device=args.gpu)
         test_l = chainer.cuda.to_gpu(np.squeeze(test_l), device=args.gpu)
 
-    train = chainer.datasets.TupleDataset(train, train_l)
-    test = chainer.datasets.TupleDataset(test, test_l)
+    train = chainer.datasets.TupleDataset(train, train_l, train_class)
+    test = chainer.datasets.TupleDataset(test, test_l, test_class)
 
     optimizer = chainer.optimizers.Adam(args.learning_rate)
     optimizer.setup(model)

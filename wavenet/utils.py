@@ -5,6 +5,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import numpy as np
+import operator
 
 
 def binarize(images, xp=np):
@@ -26,3 +27,11 @@ def convert_to_rgb(images, xp=np):
 def sample_from(distribution):
     batch_size, bins = distribution.shape
     return np.array([np.random.choice(bins, p=distr) for distr in distribution])
+
+
+def extract_labels(data):
+    return np.fromiter(map(operator.itemgetter(1), data), dtype='i')
+
+
+def extract_images(data):
+    return np.array(list(map(operator.itemgetter(0), data))).astype('f')
