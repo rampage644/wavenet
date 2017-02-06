@@ -97,8 +97,7 @@ class ResidualBlock(chainer.Chain):
         v_gate = self.vertical_gate_conv(v)
         # label bias is addede to both vertical and horizontal conv
         # here we take only shape as it should be the same
-        print(v_gate.shape)
-        label = F.broadcast_to(self.label(label), v_gate.shape)
+        label = F.broadcast_to(F.expand_dims(F.expand_dims(self.label(label), -1), -1), v_gate.shape)
         v_t, v_s = F.split_axis(v_gate + label, 2, axis=1)
         v = F.tanh(v_t) * F.sigmoid(v_s)
 
@@ -116,7 +115,7 @@ class ResidualBlockList(chainer.ChainList):
 
     def __call__(self, v, h, label):
         for block in self:
-            v_, h_ = block(v, h)
+            v_, h_ = block(v, h, label)
             v, h = v_, h + h_
         return v, h
 
