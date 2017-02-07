@@ -63,7 +63,7 @@ def main():
 
     IN_CHANNELS = 3
     # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
-    model = models.PixelCNN(IN_CHANNELS, 2 * args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
+    model = models.PixelCNN(IN_CHANNELS, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
