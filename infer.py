@@ -59,6 +59,9 @@ def main():
                         help='Output filename')
     parser.add_argument('--label', '-l', type=np.int32, default=0,
                         help='Class label to generate')
+    parser.add_argument('--count', '-c', type=int, default=10,
+                        help='Number of images to generate \
+                              (woulld be squared: so for 10 it would generate 100)')
     args = parser.parse_args()
 
     IN_CHANNELS = 3
@@ -73,7 +76,7 @@ def main():
         B, C, H, W = samples.shape
         return model(samples, np.ones(B).astype('i') * args.label)
 
-    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 9, args.output)
+    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, args.count, args.output)
 
 
 if __name__ == '__main__':
