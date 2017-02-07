@@ -63,6 +63,8 @@ def main():
     parser.add_argument('--count', '-c', type=int, default=10,
                         help='Number of images to generate \
                               (woulld be squared: so for 10 it would generate 100)')
+    parser.add_argument('--height', type=int, default=28, help='Output image height')
+    parser.add_argument('--width', type=int, default=28, help='Output image width')
     args = parser.parse_args()
 
     IN_CHANNELS = 3
@@ -77,7 +79,8 @@ def main():
         B, C, H, W = samples.shape
         return model(samples, np.ones(B).astype('i') * args.label)
 
-    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, args.count, args.output)
+    generate_and_save_samples(sample_fn, args.height, args.width, IN_CHANNELS,
+                              args.count, args.output)
 
 
 if __name__ == '__main__':
