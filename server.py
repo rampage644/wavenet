@@ -51,7 +51,7 @@ COLORS = Set1[3][:2] * 2
 ALPHAS = [.4, .4, 1., 1.]
 TRAIN_KEY, TEST_KEY = 'main/nll', 'validation/main/nll'
 TIME_KEY = 'iteration'
-WINDOW_SIZE = 10
+WINDOW_SIZE = 5
 PREFIX_KEYS = [
     'conv1', 'conv2', 'conv4'
 ]
@@ -97,11 +97,17 @@ def callback():
                 del dataseries[key]
 
 
-    window = np.hamming(WINDOW_SIZE)
-    window /= window.sum()
+
+    def window_for(size):
+        window = np.hamming(size)
+        window /= window.sum()
+        return window
 
     def smooth(data):
-        return np.concatenate([data[:WINDOW_SIZE-1], np.convolve(data, window, mode='valid')])
+        edge_data = [np.convolve(data[:size], window_for(size), mode='valid')
+                     for size in range(1, WINDOW_SIZE)]
+
+        return np.concatenate(edge_data + [np.convolve(data, window_for(WINDOW_SIZE), mode='valid')])
 
     train_ts = get('main/nll')
     test_ts = get('validation/main/nll')
