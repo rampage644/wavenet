@@ -14,6 +14,8 @@ import chainer.training
 import chainer.training.extensions as extensions
 import chainer.functions as F
 
+import tqdm
+
 import wavenet.models as models
 import wavenet.utils as utils
 
@@ -28,15 +30,14 @@ def generate_and_save_samples(sample_fn, height, width, channels, count, filenam
     samples = chainer.Variable(
         chainer.cuda.cupy.zeros((count ** 2, channels, height, width), dtype='float32'))
 
-    for i in range(height):
-        for j in range(width):
-            for k in range(channels):
-                probs = F.softmax(sample_fn(samples))[:, :, k, i, j]
-                _, level_count = probs.shape
-                samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / (level_count - 1)
-                print('\r{:.2f}%'.format(100.0 * (i * width + j + 1) / height / width), end='')
-    print()
-
+    with tqdm.tqdm(total=height*width*channels) as bar:
+        for i in range(height):
+            for j in range(width):
+                for k in range(channels):
+                    probs = F.softmax(sample_fn(samples))[:, :, k, i, j]
+                    _, level_count = probs.shape
+                    samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / (level_count - 1)
+                    bar.update()
     samples.to_cpu()
 
     save_images(samples.data * 255.0)
