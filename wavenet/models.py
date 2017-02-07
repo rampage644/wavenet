@@ -156,3 +156,66 @@ class Classifier(chainer.Chain):
          nll = F.softmax_cross_entropy(y, t, normalize=False)
          chainer.report({'nll': nll, 'bits/dim': nll / dims}, self)
          return nll
+
+
+class CausalDilatedConvolution1D(chainer.links.DilatedConvolution2D):
+    def __init__(self, in_channels, out_channels, dilate, kernel_width, *args, **kwargs):
+        super().__init__(
+            in_channels, out_channels, ksize=[1, kernel_width], pad=[0, dilate], dilate=[1, dilate],
+            *args, **kwargs
+        )
+        self.dilate = dilate
+
+    def __call__(self, x):
+        ret = super().__call__(x)
+        return ret[:, :, :, :-self.dilate]  # B, C, 1, W
+
+
+class CausalLayer(chainer.Chain):
+    def __init__(self, in_channels, out_channels, dilate, kernel_width):
+        super().__init__(
+            gated_conv=CausalDilatedConvolution1D(in_channels, 2*out_channels, dilate, kernel_width),
+            dense_conv=L.Convolution2D(out_channels, in_channels, 1)
+        )
+
+    def __call__(self, x):
+        x_ = self.gated_conv(x)
+        x_tanh, x_sigmoid = F.split_axis(x_, 2, axis=1)
+
+        x_ = F.tanh(x_tanh) * F.sigmoid(x_sigmoid)
+        x_ = self.dense_conv(x_)
+        return x + x_
+
+
+class CausalStack(chainer.ChainList):
+    def __init__(self, layers_num, in_channels, out_channels, kernel_width):
+        layers = [CausalLayer(in_channels, out_channels, 2 ** i, kernel_width)
+                  for i in range(layers_num)]
+        super().__init__(*layers)
+
+        def __call__(self, x):
+            for layer in self:
+                x = layer(x)
+            return x
+
+
+class StackList(chainer.ChainList):
+    def __init__(self, stack_num, *args, **kwargs):
+        stacks = [CausalStack(*args, **kwargs) for _ in range(stack_num)]
+        super().__init__(*stacks)
+
+    def __call__(self, x):
+        for stack in self:
+            x = stack(x)
+        return x
+
+
+class WaveNet(chainer.Chain):
+    def __init__(self, in_channels, hidden_dim, stacks_num, layers_num, kernel_width):
+        super().__init__(
+            conv1=CausalDilatedConvolution1D(in_channels, hidden_dim, 1, 2),
+            stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width)
+        )
+
+    def __call__(self, x):
+        return self.stacks(self.conv1(x))
