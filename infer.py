@@ -57,20 +57,26 @@ def main():
                         help='Level number to quantisize pixel values')
     parser.add_argument('--output', '-o', type=str, default='samples.jpg',
                         help='Output filename')
+    parser.add_argument('--label', '-l', type=np.int32, default=0,
+                        help='Class label to generate')
+    parser.add_argument('--count', '-c', type=int, default=10,
+                        help='Number of images to generate \
+                              (woulld be squared: so for 10 it would generate 100)')
     args = parser.parse_args()
 
     IN_CHANNELS = 3
     # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
-    model = models.PixelCNN(IN_CHANNELS, 2 * args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
+    model = models.PixelCNN(IN_CHANNELS, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
         model.to_gpu()
     chainer.serializers.load_npz(args.model, model)
 
     def sample_fn(samples):
-        return model(samples)
+        B, C, H, W = samples.shape
+        return model(samples, np.ones(B).astype('i') * args.label)
 
-    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, 9, args.output)
+    generate_and_save_samples(sample_fn, 28, 28, IN_CHANNELS, args.count, args.output)
 
 
 if __name__ == '__main__':

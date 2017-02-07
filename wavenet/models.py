@@ -86,22 +86,23 @@ class ResidualBlock(chainer.Chain):
                 in_channels, 2 * out_channels, ksize=[1, filter_size//2+1],
                 pad=[0, filter_size//2+1]),
             horizontal_gate_conv=L.Convolution2D(2*out_channels, 2*out_channels, 1),
-            horizontal_output=MaskedConvolution2D(out_channels, out_channels, 1, mask=mask)
+            horizontal_output=MaskedConvolution2D(out_channels, out_channels, 1, mask=mask),
+            label=L.EmbedID(10, 2*out_channels)
         )
 
-    def _crop(self, x, ksize):
-        kh, kw = ksize
-        return x[:, :, ]
-
-    def __call__(self, v, h):
+    def __call__(self, v, h, label):
         v = self.vertical_conv(v)
         to_vertical = self.v_to_h_conv(v)
 
-        v_t, v_s = F.split_axis(self.vertical_gate_conv(v), 2, axis=1)
+        v_gate = self.vertical_gate_conv(v)
+        # label bias is addede to both vertical and horizontal conv
+        # here we take only shape as it should be the same
+        label = F.broadcast_to(F.expand_dims(F.expand_dims(self.label(label), -1), -1), v_gate.shape)
+        v_t, v_s = F.split_axis(v_gate + label, 2, axis=1)
         v = F.tanh(v_t) * F.sigmoid(v_s)
 
         h_ = self.horizontal_conv(h)
-        h_t, h_s = F.split_axis(self.horizontal_gate_conv(h_ + to_vertical), 2, axis=1)
+        h_t, h_s = F.split_axis(self.horizontal_gate_conv(h_ + to_vertical) + label, 2, axis=1)
         h = self.horizontal_output(F.tanh(h_t) * F.sigmoid(h_s))
 
         return v, h
@@ -112,9 +113,9 @@ class ResidualBlockList(chainer.ChainList):
         blocks = [ResidualBlock(*args, **kwargs) for _ in range(block_num)]
         super(ResidualBlockList, self).__init__(*blocks)
 
-    def __call__(self, v, h):
+    def __call__(self, v, h, label):
         for block in self:
-            v_, h_ = block(v, h)
+            v_, h_ = block(v, h, label)
             v, h = v_, h + h_
         return v, h
 
@@ -130,10 +131,10 @@ class PixelCNN(chainer.Chain):
         self.in_channels = in_channels
         self.out_dims = out_dims
 
-    def __call__(self, x):
-        v, h = self.conv1(x, x)
+    def __call__(self, x, label):
+        v, h = self.conv1(x, x, label)
         # XXX: Consider doing something with vertical stack output as well
-        _, h = self.blocks(v, h)
+        _, h = self.blocks(v, h, label)
         h = self.conv2(F.relu(h))
         h = self.conv4(F.relu(h))
 
@@ -148,8 +149,8 @@ class Classifier(chainer.Chain):
      def __init__(self, predictor):
          super(Classifier, self).__init__(predictor=predictor)
 
-     def __call__(self, x, t):
-         y = self.predictor(x)
+     def __call__(self, x, t, label):
+         y = self.predictor(x, label)
 
          nll = F.softmax_cross_entropy(y, t, normalize=False)
          chainer.report({'nll': nll}, self)
