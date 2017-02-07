@@ -131,3 +131,40 @@ print(out[0, :, 0], out[0, :, 1], out[0, :, 2], sep='\n')
 out.shape
 
 122*4
+
+#%%
+import chainer.links as L
+
+N = 3
+conv1 = L.Convolution2D(1, 1, )
+conv1.W.data
+
+conv2 = L.Convolution2D(1, 1, [1, N//2+1], pad=[0, N//2+1], initialW=1.0)
+conv2.W.data
+
+# this filter rank is 1, so this convolution is separable
+conv_combined = L.Convolution2D(1, 1, N, pad=1, initialW=1.0)
+conv_combined.W.data
+
+
+dims = 1, 1, 5, 6  # B, Cin, H, W
+input = np.arange(np.prod(dims)).astype('f').reshape(dims)
+
+input
+conv2(conv1(input)).data
+conv_combined(input).data
+
+(conv2(conv1(input)) - conv_combined(input)).data
+(conv1(conv2(input)) - conv_combined(input)).data
+
+
+import wavenet.models as models
+import importlib
+importlib.reload(models)
+
+conv1 = models.CroppedConvolution(1, 1, [1, 2], pad=[0, 2], initialW=1.0)
+conv1.pad, conv1.ksize
+
+input, conv1(input).data
+
+#
