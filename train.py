@@ -100,7 +100,8 @@ def main():
         model.predictor, 'pixelcnn_{.updater.iteration}'), trigger=(1, 'epoch'))
     trainer.extend(extensions.LogReport(trigger=log_trigger))
     trainer.extend(extensions.PrintReport(
-        ['epoch', 'iteration', 'main/nll', 'validation/main/nll', 'elapsed_time']))
+        ['epoch', 'iteration', 'main/nll', 'validation/main/nll', 'elapsed_time',
+         'main/bits/dim', 'validation/bits/dim']))
     trainer.extend(extensions.ProgressBar())
     if args.stats:
         trainer.extend(stats.ParameterStatistics([
