@@ -167,4 +167,35 @@ conv1.pad, conv1.ksize
 
 input, conv1(input).data
 
-#
+#%%
+
+import matplotlib.pyplot as plt
+import chainer
+
+plt.rcParams["figure.figsize"] = (16, 12)
+train, test = chainer.datasets.get_cifar10()
+
+def show(samples):
+    for col, sample in enumerate(samples):
+        image = sample[0].transpose(1, 2, 0)
+        plt.subplot(1, len(samples), col+1)
+        plt.imshow(image)
+    plt.show()
+
+show([sample for sample in train[:100] if sample[1] == 2])
+
+
+#%%
+import numpy as np
+import matplotlib.pyplot as plt
+import scipy.io.wavfile as wavfile
+import scipy.signal as signal
+
+rate, audio = wavfile.read('p225_001.wav')
+audio_downsampled = audio[np.arange(len(audio)) % 4 == 0]
+wavfile.write('p225_001_d.wav', 12000, audio_downsampled)
+
+audio.shape, audio_downsampled.shape, audio.shape[0] / 4
+_ = plt.hist(audio_downsampled, bins=100)
+
+def split(audio, chunk):
