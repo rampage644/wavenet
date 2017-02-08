@@ -211,11 +211,21 @@ class StackList(chainer.ChainList):
 
 
 class WaveNet(chainer.Chain):
-    def __init__(self, in_channels, hidden_dim, stacks_num, layers_num, kernel_width):
+    def __init__(self, out_channels, hidden_dim, out_hidden_dim, stacks_num,
+                 layers_num, kernel_width):
         super().__init__(
-            conv1=CausalDilatedConvolution1D(in_channels, hidden_dim, 1, 2),
-            stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width)
+            conv1=CausalDilatedConvolution1D(1, hidden_dim, 1, 2),
+            stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width),
+            conv2=L.Convolution2D(hidden_dim, out_hidden_dim, 1),
+            conv3=L.Convolution2D(out_hidden_dim, out_channels, 1),
         )
+        self.out_channels = out_channels
 
     def __call__(self, x, label):
-        return F.expand_dims(self.stacks(self.conv1(x)), 2)
+        x = self.stacks(self.conv1(x))
+        x = self.conv2(F.relu(x))
+        x = self.conv3(F.relu(x))
+
+        batch_size, _, _, width = x.shape
+        x = F.reshape(x, [batch_size, self.out_channels, 1, 1, width])
+        return x

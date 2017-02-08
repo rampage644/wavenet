@@ -26,9 +26,11 @@ def main():
                         help='Resume the training from snapshot')
     parser.add_argument('--out', '-o', default='',
                         help='Output directory')
-    parser.add_argument('--data', default=os.getcwd(),
+    parser.add_argument('--data','-d', default=os.getcwd(),
                         help='Input data directory')
-    parser.add_argument('--hidden_dim', '-d', type=int, default=16,
+    parser.add_argument('--hidden_dim', type=int, default=16,
+                        help='Number of hidden dimensions')
+    parser.add_argument('--out_hidden_dim', type=int, default=8,
                         help='Number of hidden dimensions')
     parser.add_argument('--stacks_num', '-s', type=int, default=1,
                         help='Number of stacks')
@@ -47,7 +49,8 @@ def main():
     args = parser.parse_args()
 
     model = models.Classifier(
-        models.WaveNet(args.levels, args.hidden_dim, args.stacks_num, args.layers_num, 2))
+        models.WaveNet(args.levels, args.hidden_dim, args.out_hidden_dim, args.stacks_num,
+                       args.layers_num, 2))
 
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
