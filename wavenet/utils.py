@@ -93,4 +93,6 @@ class VCTK(DatasetMixin):
 
     def get_example(self, i):
         wfile, idx = self.indices[i]
-        return nth(_preprocess(wfile, self.rate, self.chunk), idx)
+        sample = np.expand_dims(np.expand_dims(
+            nth(_preprocess(wfile, self.rate, self.chunk), idx), 0), 0).astype(np.float32)
+        return (sample, quantisize(sample, 256), np.array(0))

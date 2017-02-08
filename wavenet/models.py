@@ -193,10 +193,10 @@ class CausalStack(chainer.ChainList):
                   for i in range(layers_num)]
         super().__init__(*layers)
 
-        def __call__(self, x):
-            for layer in self:
-                x = layer(x)
-            return x
+    def __call__(self, x):
+        for layer in self:
+            x = layer(x)
+        return x
 
 
 class StackList(chainer.ChainList):
@@ -217,5 +217,5 @@ class WaveNet(chainer.Chain):
             stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width)
         )
 
-    def __call__(self, x):
-        return self.stacks(self.conv1(x))
+    def __call__(self, x, label):
+        return F.expand_dims(self.stacks(self.conv1(x)), 2)
