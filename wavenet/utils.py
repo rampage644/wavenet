@@ -43,7 +43,7 @@ def extract_images(data):
 
 
 def mulaw(audio, mu=255):
-    return np.sign(audio) * np.log1p(mu * audio) / np.log1p(mu)
+    return np.sign(audio) * np.log1p(mu * np.abs(audio)) / np.log1p(mu)
 
 
 def wav_to_float(audio, bits=16):
