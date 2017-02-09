@@ -71,28 +71,28 @@ def nth(iterable, n, default=None):
     "Returns the nth item or a default value (from itertool recipes)"
     return next(itertools.islice(iterable, n, None), default)
 
-
+#%%
 class VCTK(DatasetMixin):
-    def __init__(self, root_dir, rate, chunk_length):
-        self.indices = {}
-        self.dir = root_dir
-        self.rate = rate
-        self.chunk = chunk_length
+    def __init__(self, root_dir):
+        self._populate(root_dir)
 
-        self._populate()
+    def _populate(self, dir):
+        data = []
+        files = [os.path.join(dir, name) for name in os.listdir(dir) if 'vctk_' in name]
 
-    def _populate(self):
-        idx = 0
-        for wfile in wav_files_in(self.dir):
-            for cidx, _ in enumerate(_preprocess(wfile, self.rate, self.chunk)):
-                self.indices[idx] = [wfile, cidx]
-                idx += 1
+        for name in files:
+            with open(name, 'rb') as ifile:
+                fstat = os.fstat(ifile.fileno())
+                while ifile.tell() < fstat.st_size:
+                    d = np.load(ifile).astype(np.float32)
+                    data.append(d)
+        data = np.concatenate(data)
+        count, width = data.shape
+        self.data = np.reshape(data, [count, 1, 1, width])
+        self.labels = quantisize(self.data, 256)
 
     def __len__(self):
-        return len(self.indices)
+        return len(self.data)
 
     def get_example(self, i):
-        wfile, idx = self.indices[i]
-        sample = np.expand_dims(np.expand_dims(
-            nth(_preprocess(wfile, self.rate, self.chunk), idx), 0), 0).astype(np.float32)
-        return (sample, quantisize(sample, 256), np.array(0))
+        return (self.data[i], self.labels[i], np.array(0))
