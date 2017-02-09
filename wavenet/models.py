@@ -5,8 +5,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import unicode_literals
 
-import numpy as np
+import itertools
 
+import numpy as np
 import chainer
 import chainer.functions as F
 import chainer.links as L
@@ -184,7 +185,7 @@ class CausalLayer(chainer.Chain):
 
         x_ = F.tanh(x_tanh) * F.sigmoid(x_sigmoid)
         x_ = self.dense_conv(x_)
-        return x + x_
+        return x + x_, x_
 
 
 class CausalStack(chainer.ChainList):
@@ -194,9 +195,11 @@ class CausalStack(chainer.ChainList):
         super().__init__(*layers)
 
     def __call__(self, x):
+        skip_conn = []
         for layer in self:
-            x = layer(x)
-        return x
+            x, skip_ = layer(x)
+            skip_conn.append(skip_)
+        return x, sum(skip_conn)
 
 
 class StackList(chainer.ChainList):
@@ -205,9 +208,11 @@ class StackList(chainer.ChainList):
         super().__init__(*stacks)
 
     def __call__(self, x):
+        skip_conn = []
         for stack in self:
-            x = stack(x)
-        return x
+            x, skip = stack(x)
+            skip_conn.append(skip)
+        return x, sum(skip_conn)
 
 
 class WaveNet(chainer.Chain):
@@ -222,8 +227,8 @@ class WaveNet(chainer.Chain):
         self.out_channels = out_channels
 
     def __call__(self, x, label):
-        x = self.stacks(self.conv1(x))
-        x = self.conv2(F.relu(x))
+        x, skip = self.stacks(self.conv1(x))
+        x = self.conv2(F.relu(x+skip))
         x = self.conv3(F.relu(x))
 
         batch_size, _, _, width = x.shape
