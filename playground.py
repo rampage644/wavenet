@@ -199,3 +199,25 @@ audio.shape, audio_downsampled.shape, audio.shape[0] / 4
 _ = plt.hist(audio_downsampled, bins=100)
 
 def split(audio, chunk):
+
+
+#%%
+import numpy as np
+
+with open('test', 'wb') as ofile:
+    for _ in range(2):
+        array_to_save = np.random.randn(1, 1024)
+        np.save(ofile, array_to_save)
+
+
+total = []
+with open('test', 'rb') as ifile:
+    for _ in range(4):
+        data = np.load(ifile)
+        total.append(data)
+
+total
+
+
+
+
