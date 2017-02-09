@@ -46,6 +46,10 @@ def mulaw(audio, mu=255):
     return np.sign(audio) * np.log1p(mu * np.abs(audio)) / np.log1p(mu)
 
 
+def inverse_mulaw(data, mu=255):
+    return np.sign(data) * ((mu + 1) ** np.abs(data) - 1) / data
+
+
 def wav_to_float(audio, bits=16):
     '''Squash -2 ** 15; 2 ** 15 into [-1, 1] range'''
     return audio / 2 ** (bits-1)
