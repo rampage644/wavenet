@@ -1,11 +1,16 @@
 '''Utilities.'''
-from __future__ import print_function
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import unicode_literals
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
+
+import itertools
+import operator
+import os
 
 import numpy as np
-import operator
+import scipy.io.wavfile as wavfile
+import scipy.signal as signal
+
+from chainer.dataset.dataset_mixin import DatasetMixin
 
 
 def binarize(images, xp=np):
@@ -35,3 +40,63 @@ def extract_labels(data):
 
 def extract_images(data):
     return np.array(list(map(operator.itemgetter(0), data))).astype('f')
+
+
+def mulaw(audio, mu=255):
+    return np.sign(audio) * np.log1p(mu * np.abs(audio)) / np.log1p(mu)
+
+
+def inverse_mulaw(data, mu=255):
+    return np.sign(data) * ((mu + 1) ** np.abs(data) - 1) / data
+
+
+def wav_to_float(audio, bits=16):
+    '''Squash -2 ** 15; 2 ** 15 into [-1, 1] range'''
+    return audio / 2 ** (bits-1)
+
+
+def wav_files_in(dir):
+    for path, _, files in os.walk(dir):
+        names = [name for name in files if '.wav' in name]
+        for name in names:
+            yield os.path.join(path, name)
+
+
+def _preprocess(ifilename, rate, chunk_length):
+    baserate, data = wavfile.read(ifilename)
+    audio = signal.resample_poly(data, rate, baserate)
+    audio = mulaw(wav_to_float(audio))
+    while len(audio) >= chunk_length:
+        yield audio[:chunk_length]
+        audio = audio[chunk_length:]
+
+
+def nth(iterable, n, default=None):
+    "Returns the nth item or a default value (from itertool recipes)"
+    return next(itertools.islice(iterable, n, None), default)
+
+#%%
+class VCTK(DatasetMixin):
+    def __init__(self, root_dir):
+        self._populate(root_dir)
+
+    def _populate(self, dir):
+        data = []
+        files = [os.path.join(dir, name) for name in os.listdir(dir) if 'vctk_' in name]
+
+        for name in files:
+            with open(name, 'rb') as ifile:
+                fstat = os.fstat(ifile.fileno())
+                while ifile.tell() < fstat.st_size:
+                    d = np.load(ifile).astype(np.float32)
+                    data.append(d)
+        data = np.concatenate(data)
+        count, width = data.shape
+        self.data = np.reshape(data, [count, 1, 1, width])
+        self.labels = quantisize(self.data, 256)
+
+    def __len__(self):
+        return len(self.data)
+
+    def get_example(self, i):
+        return (self.data[i], self.labels[i], np.array(0))
