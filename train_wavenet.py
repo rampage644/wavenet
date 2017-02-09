@@ -59,7 +59,7 @@ def main():
     optimizer = chainer.optimizers.Adam(args.learning_rate)
     optimizer.setup(model)
 
-    train = utils.VCTK(args.data, args.rate, args.chunk)
+    train = utils.VCTK(args.data)
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     updater = chainer.training.StandardUpdater(train_iter, optimizer, device=args.gpu)
