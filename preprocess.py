@@ -22,11 +22,12 @@ def split_into(data, n):
     return res
 
 
-def process_files(files, id, output, rate, chunk, batch):
+def process_files(files, id, output, rate, chunk_length, batch):
     data = []
-    with open(os.path.join(output, 'vctk_{}'.format(id), 'wb')) as ofile:
+    ofilename = os.path.join(output, 'vctk_{}'.format(id))
+    with open(ofilename, 'wb') as ofile:
         for filename in files:
-            for chunk in utils._preprocess(filename, rate, chunk):
+            for chunk in utils._preprocess(filename, rate, chunk_length):
                 data.append(chunk)
 
             if len(data) >= batch:
@@ -50,7 +51,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         for i in range(args.workers):
-            pool.submit(process_files, file_groups[i], i, args.output, args.rate. args.chunk,
+            pool.submit(process_files, file_groups[i], i, args.output, args.rate, args.chunk,
                         args.flush_every)
 
 
