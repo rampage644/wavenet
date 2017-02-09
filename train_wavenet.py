@@ -28,11 +28,11 @@ def main():
                         help='Output directory')
     parser.add_argument('--data','-d', default=os.getcwd(),
                         help='Input data directory')
-    parser.add_argument('--hidden_dim', type=int, default=16,
+    parser.add_argument('--hidden_dim', type=int, default=32,
                         help='Number of hidden dimensions')
-    parser.add_argument('--out_hidden_dim', type=int, default=8,
+    parser.add_argument('--out_hidden_dim', type=int, default=32,
                         help='Number of hidden dimensions')
-    parser.add_argument('--stacks_num', '-s', type=int, default=1,
+    parser.add_argument('--stacks_num', '-s', type=int, default=5,
                         help='Number of stacks')
     parser.add_argument('--layers_num', '-l', type=int, default=10,
                         help='Number of layers per stack')
@@ -40,10 +40,6 @@ def main():
                         help='Bound for gradient hard clipping')
     parser.add_argument('--levels', type=int, default=256,
                         help='Level number to quantisize values')
-    parser.add_argument('--rate', type=int, default=16000,
-                        help='Downsample rate for input files')
-    parser.add_argument('--chunk', type=int, default=1024,
-                        help='Chunk length: input files would be splitted into chunks')
     parser.add_argument('--stats', type=bool, default=False,
                         help='Collect layerwise statistics')
     args = parser.parse_args()
@@ -70,6 +66,8 @@ def main():
     trainer.extend(extensions.PrintReport(
         ['iteration', 'main/nll', 'elapsed_time']))
     trainer.extend(extensions.ProgressBar())
+    trainer.extend(extensions.snapshot())
+    trainer.extend(extensions.snapshot_object(model.predictor, 'wavenet_{.updater.iteration}'))
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
