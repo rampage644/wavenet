@@ -47,7 +47,7 @@ def mulaw(audio, mu=255):
 
 
 def inverse_mulaw(data, mu=255):
-    return np.sign(data) * ((mu + 1) ** np.abs(data) - 1) / data
+    return np.sign(data) * ((mu + 1) ** np.abs(data) - 1) / mu
 
 
 def wav_to_float(audio, bits=16):
