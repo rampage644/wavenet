@@ -20,7 +20,7 @@ import wavenet.utils as utils
 
 def generate_and_save_samples(sample_fn, length, count, dir, rate):
     def save_samples(data):
-        value = np.iinfo(np.int32).max
+        value = np.iinfo(np.int16).max
         audio = (utils.inverse_mulaw(data) * value).astype(np.int16)
         for idx, sample in enumerate(audio):
             filename = os.path.join(dir, 'sample_{}.wav'.format(idx))
