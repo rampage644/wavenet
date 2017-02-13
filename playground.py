@@ -216,8 +216,53 @@ with open('test', 'rb') as ifile:
         data = np.load(ifile)
         total.append(data)
 
-total
+
+#%%
+layer = CausalDilatedConvolution1D(1, 1, 4, 2, initialW=1.0)
+
+input = np.arange(1024).reshape([1, 1, 1, 1024]).astype(np.float32)
+
+output = layer(input)
+layer.zerograds()
+
+grads = np.zeros_like(output.data)
+grads[0, 0, 0, 6] = 1
+output.grad = grads
+
+output.backward()
+layer.b.grad
 
 
+#%%
+import importlib
+import matplotlib.pyplot as plt
+import scipy.io.wavfile as wavfile
+importlib.reload(utils)
 
+rate, audio.shape[0] // 6 / 1024  = wavfile.read('p225_001.wav')
+_ = plt.hist(audio, bins=100)
 
+transformed = utils.mulaw(utils.wav_to_float(audio))
+_ = plt.hist(transformed, bins=100)
+
+restored = utils.inverse_mulaw(transformed)
+_ = plt.hist(restored, bins=100)
+
+value = np.iinfo(np.int16).max
+audio2 = (restored * value).astype(np.int16)
+_ = plt.hist(audio2, bins=100)
+
+#%%
+overlap = 256
+data = utils.VCTK('.')
+audio, labels, _ = data.get_example(0)
+audio2, labels2, _ = data.get_example(1)
+
+_ = plt.hist(np.squeeze(audio), bins=100)
+_ = plt.hist(np.squeeze(labels), bins=100)
+
+batch = list(utils._preprocess('p225_001.wav', 8000, 1024))
+_ = plt.hist(np.squeeze(batch[0]), bins=100)
+_ = plt.hist(np.squeeze(utils.quantisize(batch[0], 256)), bins=100)
+
+#%%
