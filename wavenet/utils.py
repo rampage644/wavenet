@@ -63,9 +63,12 @@ def wav_files_in(dir):
 
 
 def _preprocess(ifilename, rate, chunk_length):
+    # data within [-32768 / 2, 32767 / 2] interval
     baserate, data = wavfile.read(ifilename)
     audio = signal.resample_poly(data, rate, baserate)
-    audio = mulaw(wav_to_float(audio))
+    # audio within [0; 1] interval: wav_to_float converts it to be in [-1;1] interval
+    # mulaw leaves it within same interval, then we shift it to be in [0;1] interval
+    audio = mulaw(wav_to_float(audio)) * 0.5 + 0.5
     while len(audio) >= chunk_length:
         yield audio[:chunk_length]
         audio = audio[chunk_length:]
@@ -78,6 +81,7 @@ def nth(iterable, n, default=None):
 #%%
 class VCTK(DatasetMixin):
     def __init__(self, root_dir):
+        self._levels = 256
         self._populate(root_dir)
 
     def _populate(self, dir):
@@ -93,7 +97,7 @@ class VCTK(DatasetMixin):
         data = np.concatenate(data)
         count, width = data.shape
         self.data = np.reshape(data, [count, 1, 1, width])
-        self.labels = quantisize(self.data, 256)
+        self.labels = quantisize(self.data, self._levels)
 
     def __len__(self):
         return len(self.data)
