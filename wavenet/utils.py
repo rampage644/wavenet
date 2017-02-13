@@ -62,7 +62,7 @@ def wav_files_in(dir):
             yield os.path.join(path, name)
 
 
-def _preprocess(ifilename, rate, chunk_length):
+def _preprocess(ifilename, rate, chunk_length, chunk_overlap):
     # data within [-32768 / 2, 32767 / 2] interval
     baserate, data = wavfile.read(ifilename)
     audio = signal.resample_poly(data, rate, baserate)
@@ -71,7 +71,7 @@ def _preprocess(ifilename, rate, chunk_length):
     audio = mulaw(wav_to_float(audio)) * 0.5 + 0.5
     while len(audio) >= chunk_length:
         yield audio[:chunk_length]
-        audio = audio[chunk_length:]
+        audio = audio[chunk_overlap:]
 
 
 def nth(iterable, n, default=None):
