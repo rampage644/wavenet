@@ -20,12 +20,13 @@ import wavenet.utils as utils
 
 def generate_and_save_samples(sample_fn, length, count, dir, rate):
     def save_samples(data):
-        value = np.iinfo(np.int32).max
-        audio = (utils.inverse_mulaw(data) * value).astype(np.int16)
+        value = np.iinfo(np.int16).max // 2
+        audio = (utils.inverse_mulaw(data * 2 - 1) * value).astype(np.int16)
         for idx, sample in enumerate(audio):
             filename = os.path.join(dir, 'sample_{}.wav'.format(idx))
             wavfile.write(filename, rate, sample)
 
+    # XXX: Consider switch to white noise as input
     samples = chainer.Variable(
         chainer.cuda.cupy.zeros([count, 1, 1, length], dtype='float32'))
 

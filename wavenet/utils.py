@@ -47,7 +47,7 @@ def mulaw(audio, mu=255):
 
 
 def inverse_mulaw(data, mu=255):
-    return np.sign(data) * ((mu + 1) ** np.abs(data) - 1) / data
+    return np.sign(data) * ((mu + 1) ** np.abs(data) - 1) / mu
 
 
 def wav_to_float(audio, bits=16):
@@ -62,13 +62,16 @@ def wav_files_in(dir):
             yield os.path.join(path, name)
 
 
-def _preprocess(ifilename, rate, chunk_length):
+def _preprocess(ifilename, rate, chunk_length, chunk_overlap):
+    # data within [-32768 / 2, 32767 / 2] interval
     baserate, data = wavfile.read(ifilename)
     audio = signal.resample_poly(data, rate, baserate)
-    audio = mulaw(wav_to_float(audio))
+    # audio within [0; 1] interval: wav_to_float converts it to be in [-1;1] interval
+    # mulaw leaves it within same interval, then we shift it to be in [0;1] interval
+    audio = mulaw(wav_to_float(audio)) * 0.5 + 0.5
     while len(audio) >= chunk_length:
         yield audio[:chunk_length]
-        audio = audio[chunk_length:]
+        audio = audio[chunk_overlap:]
 
 
 def nth(iterable, n, default=None):
@@ -78,6 +81,7 @@ def nth(iterable, n, default=None):
 #%%
 class VCTK(DatasetMixin):
     def __init__(self, root_dir):
+        self._levels = 256
         self._populate(root_dir)
 
     def _populate(self, dir):
@@ -93,7 +97,7 @@ class VCTK(DatasetMixin):
         data = np.concatenate(data)
         count, width = data.shape
         self.data = np.reshape(data, [count, 1, 1, width])
-        self.labels = quantisize(self.data, 256)
+        self.labels = quantisize(self.data, self._levels)
 
     def __len__(self):
         return len(self.data)

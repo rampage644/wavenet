@@ -13,6 +13,7 @@ import wavenet.utils as utils
 BATCH = 10240
 RATE = 8000
 CHUNK = 1024
+OVERLAP = 256
 
 
 def split_into(data, n):
@@ -22,12 +23,12 @@ def split_into(data, n):
     return res
 
 
-def process_files(files, id, output, rate, chunk_length, batch):
+def process_files(files, id, output, rate, chunk_length, chunk_overlap, batch):
     data = []
     ofilename = os.path.join(output, 'vctk_{}'.format(id))
     with open(ofilename, 'wb') as ofile:
         for filename in files:
-            for chunk in utils._preprocess(filename, rate, chunk_length):
+            for chunk in utils._preprocess(filename, rate, chunk_length, chunk_overlap):
                 data.append(chunk)
 
             if len(data) >= batch:
@@ -43,6 +44,7 @@ def main():
     parser.add_argument('--workers', type=int, default=8)
     parser.add_argument('--rate', type=int, default=RATE)
     parser.add_argument('--chunk', type=int, default=CHUNK)
+    parser.add_argument('--overlap', type=int, default=OVERLAP)
     parser.add_argument('--flush_every', type=int, default=BATCH)
     args = parser.parse_args()
 
@@ -52,7 +54,7 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         for i in range(args.workers):
             pool.submit(process_files, file_groups[i], i, args.output, args.rate, args.chunk,
-                        args.flush_every)
+                        args.overlap, args.flush_every)
 
 
 if __name__ == '__main__':
