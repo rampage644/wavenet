@@ -176,7 +176,8 @@ class CausalLayer(chainer.Chain):
     def __init__(self, in_channels, out_channels, dilate, kernel_width):
         super().__init__(
             gated_conv=CausalDilatedConvolution1D(in_channels, 2*out_channels, dilate, kernel_width),
-            dense_conv=L.Convolution2D(out_channels, in_channels, 1)
+            res_conv=L.Convolution2D(out_channels, in_channels, 1),
+            skip_conv=L.Convolution2D(out_channels, in_channels, 1)
         )
 
     def __call__(self, x):
@@ -184,8 +185,9 @@ class CausalLayer(chainer.Chain):
         x_tanh, x_sigmoid = F.split_axis(x_, 2, axis=1)
 
         x_ = F.tanh(x_tanh) * F.sigmoid(x_sigmoid)
-        x_ = self.dense_conv(x_)
-        return x + x_, x_
+        x1 = self.res_conv(x_)
+        x2 = self.skip_conv(x_)
+        return x + x1, x2
 
 
 class CausalStack(chainer.ChainList):
@@ -199,7 +201,7 @@ class CausalStack(chainer.ChainList):
         for layer in self:
             x, skip_ = layer(x)
             skip_conn.append(skip_)
-        return x, sum(skip_conn)
+        return x, skip_conn
 
 
 class StackList(chainer.ChainList):
@@ -211,8 +213,8 @@ class StackList(chainer.ChainList):
         skip_conn = []
         for stack in self:
             x, skip = stack(x)
-            skip_conn.append(skip)
-        return x, sum(skip_conn)
+            skip_conn.extend(skip)
+        return x, skip_conn
 
 
 class WaveNet(chainer.Chain):
@@ -228,7 +230,7 @@ class WaveNet(chainer.Chain):
 
     def __call__(self, x, label):
         x, skip = self.stacks(self.conv1(x))
-        x = self.conv2(F.relu(x+skip))
+        x = self.conv2(F.relu(x+sum(skip)))
         x = self.conv3(F.relu(x))
 
         batch_size, _, _, width = x.shape
