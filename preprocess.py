@@ -12,7 +12,7 @@ import wavenet.utils as utils
 
 BATCH = 10240
 RATE = 8000
-CHUNK = 1024
+CHUNK = 2048
 OVERLAP = 256
 
 
