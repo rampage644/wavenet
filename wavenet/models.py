@@ -160,22 +160,23 @@ class Classifier(chainer.Chain):
 
 
 class CausalDilatedConvolution1D(chainer.links.DilatedConvolution2D):
-    def __init__(self, in_channels, out_channels, dilate, kernel_width, *args, **kwargs):
+    def __init__(self, in_channels, out_channels, pad, dilate, kernel_width, *args, **kwargs):
+        pad = dilate if pad is None else pad
         super().__init__(
-            in_channels, out_channels, ksize=[1, kernel_width], pad=[0, dilate], dilate=[1, dilate],
+            in_channels, out_channels, ksize=[1, kernel_width], pad=[0, pad], dilate=[1, dilate],
             *args, **kwargs
         )
-        self.dilate = dilate
+        self.crop = 2 * pad - dilate
 
     def __call__(self, x):
         ret = super().__call__(x)
-        return ret[:, :, :, :-self.dilate]  # B, C, 1, W
+        return ret[:, :, :, :-self.crop]  # B, C, 1, W
 
 
 class CausalLayer(chainer.Chain):
     def __init__(self, in_channels, out_channels, dilate, kernel_width):
         super().__init__(
-            gated_conv=CausalDilatedConvolution1D(in_channels, 2*out_channels, dilate, kernel_width),
+            gated_conv=CausalDilatedConvolution1D(in_channels, 2*out_channels, None, dilate, kernel_width),
             res_conv=L.Convolution2D(out_channels, in_channels, 1),
             skip_conv=L.Convolution2D(out_channels, in_channels, 1)
         )
@@ -221,7 +222,7 @@ class WaveNet(chainer.Chain):
     def __init__(self, out_channels, hidden_dim, out_hidden_dim, stacks_num,
                  layers_num, kernel_width):
         super().__init__(
-            conv1=CausalDilatedConvolution1D(1, hidden_dim, 1, 2),
+            conv1=CausalDilatedConvolution1D(1, hidden_dim, 2, 1, 2),
             stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width),
             conv2=L.Convolution2D(hidden_dim, out_hidden_dim, 1),
             conv3=L.Convolution2D(out_hidden_dim, out_channels, 1),
