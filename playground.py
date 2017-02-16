@@ -218,7 +218,7 @@ with open('test', 'rb') as ifile:
 
 
 #%%
-layer = CausalDilatedConvolution1D(1, 1, 4, 2, initialW=1.0)
+layer = models.CausalDilatedConvolution1D(1, 1, 4, None, 2, initialW=1.0)
 
 input = np.arange(1024).reshape([1, 1, 1, 1024]).astype(np.float32)
 
