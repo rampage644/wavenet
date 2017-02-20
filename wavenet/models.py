@@ -15,6 +15,9 @@ import chainer.links as L
 import wavenet.utils as utils
 
 
+INIT = chainer.initializers.HeUniform()
+
+
 class MaskedConvolution2D(L.Convolution2D):
     def __init__(self, *args, mask='B', **kwargs):
         super(MaskedConvolution2D, self).__init__(
@@ -176,9 +179,11 @@ class CausalDilatedConvolution1D(chainer.links.DilatedConvolution2D):
 class CausalLayer(chainer.Chain):
     def __init__(self, in_channels, out_channels, dilate, kernel_width):
         super().__init__(
-            gated_conv=CausalDilatedConvolution1D(in_channels, 2*out_channels, None, dilate, kernel_width),
-            res_conv=L.Convolution2D(out_channels, in_channels, 1),
-            skip_conv=L.Convolution2D(out_channels, in_channels, 1)
+            gated_conv=CausalDilatedConvolution1D(
+                in_channels, 2*out_channels, None, dilate, kernel_width,
+                initialW=INIT),
+            res_conv=L.Convolution2D(out_channels, in_channels, 1, initialW=INIT),
+            skip_conv=L.Convolution2D(out_channels, in_channels, 1, initialW=INIT)
         )
 
     def __call__(self, x):
@@ -222,10 +227,10 @@ class WaveNet(chainer.Chain):
     def __init__(self, out_channels, hidden_dim, out_hidden_dim, stacks_num,
                  layers_num, kernel_width):
         super().__init__(
-            conv1=CausalDilatedConvolution1D(1, hidden_dim, 2, 1, 2),
+            conv1=CausalDilatedConvolution1D(1, hidden_dim, 2, 1, 2, initialW=INIT),
             stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width),
-            conv2=L.Convolution2D(hidden_dim, out_hidden_dim, 1),
-            conv3=L.Convolution2D(out_hidden_dim, out_channels, 1),
+            conv2=L.Convolution2D(hidden_dim, out_hidden_dim, 1, initialW=INIT),
+            conv3=L.Convolution2D(out_hidden_dim, out_channels, 1, initialW=INIT),
         )
         self.out_channels = out_channels
 
