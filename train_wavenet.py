@@ -62,7 +62,9 @@ def main():
     optimizer.add_hook(chainer.optimizer.GradientClipping(args.clip))
     optimizer.add_hook(chainer.optimizer.WeightDecay(args.weight_decay))
 
-    train = utils.VCTK(args.data)
+    train = utils.VCTK(
+        args.data,
+        utils.receptive_field_size(args.layers_num, args.stacks_num))
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     updater = chainer.training.StandardUpdater(train_iter, optimizer, device=args.gpu)

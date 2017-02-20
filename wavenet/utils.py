@@ -85,8 +85,9 @@ def receptive_field_size(layers, stacks):
 
 #%%
 class VCTK(DatasetMixin):
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, receptive_field_size):
         self._levels = 256
+        self._receptive_field_size = receptive_field_size
         self._populate(root_dir)
 
     def _populate(self, dir):
@@ -103,6 +104,7 @@ class VCTK(DatasetMixin):
         count, width = data.shape
         self.data = np.reshape(data, [count, 1, 1, width])
         self.labels = quantisize(self.data, self._levels)
+        self.labels[:, :, :, :self._receptive_field_size] = -1
 
     def __len__(self):
         return len(self.data)
