@@ -12,6 +12,7 @@ import chainer.training.extensions as extensions
 
 import wavenet.models as models
 import wavenet.utils as utils
+import wavenet.parameter_statistics as stats
 
 
 def main():
@@ -37,10 +38,14 @@ def main():
     parser.add_argument('--layers_num', '-l', type=int, default=10,
                         help='Number of layers per stack')
     parser.add_argument('--learning_rate', type=float, default=0.001,
-                        help='Bound for gradient hard clipping')
+                        help='Learning rate')
+    parser.add_argument('--clip', type=float, default=1.,
+                        help='L2 norm gradient clipping')
+    parser.add_argument('--weight_decay', type=float, default=0.0001,
+                        help='Weight decay rate (L2 regularization)')
     parser.add_argument('--levels', type=int, default=256,
                         help='Level number to quantisize values')
-    parser.add_argument('--stats', type=bool, default=False,
+    parser.add_argument('--stats', action='store_true',
                         help='Collect layerwise statistics')
     args = parser.parse_args()
 
@@ -54,6 +59,8 @@ def main():
 
     optimizer = chainer.optimizers.Adam(args.learning_rate)
     optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.GradientClipping(args.clip))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(args.weight_decay))
 
     train = utils.VCTK(args.data)
 
@@ -61,13 +68,17 @@ def main():
     updater = chainer.training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    log_trigger = (10, 'iteration')
+    log_trigger = (1, 'epoch')
     trainer.extend(extensions.LogReport(trigger=log_trigger))
-    trainer.extend(extensions.PrintReport(
-        ['iteration', 'main/nll', 'elapsed_time']))
-    trainer.extend(extensions.ProgressBar())
+    trainer.extend(extensions.ProgressBar(update_interval=50))
     trainer.extend(extensions.snapshot())
-    trainer.extend(extensions.snapshot_object(model.predictor, 'wavenet_{.updater.iteration}'))
+    trainer.extend(
+        extensions.snapshot_object(model.predictor, 'wavenet_{.updater.iteration}'),
+        trigger=chainer.training.triggers.MinValueTrigger('main/nll'))
+    if args.stats:
+        trainer.extend(stats.ParameterStatistics([
+            # put here layers to monitor
+        ]))
 
     if args.resume:
         chainer.serializers.load_npz(args.resume, trainer)
