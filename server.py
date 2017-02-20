@@ -29,13 +29,14 @@ def convert_to_patch(xt, y_lower, y_upper):
 def plot_stats(p, key):
     _get = get_for(key)
 
-    y0 = p.patch(x=[], y=[], alpha=0.1)
+    y_min = p.line(x=[], y=[], line_dash='dashed')
+    y_max = p.line(x=[], y=[], line_dash='dashed')
     y1 = p.patch(x=[], y=[], alpha=0.1)
     y2 = p.patch(x=[], y=[], alpha=0.1)
     y3 = p.patch(x=[], y=[], alpha=0.2)
     y4 = p.line(x=[], y=[])
 
-    return [y0, y1, y2, y3, y4]
+    return [y_min, y_max, y1, y2, y3, y4]
 
 
 def get(key):
@@ -48,12 +49,11 @@ def get_for(key):
 
 FILENAME = 'log'
 COLORS = Set1[3][:2] * 2
-ALPHAS = [.4, .4, 1., 1.]
+ALPHAS = [.2, .2, 1., 1.]
 TRAIN_KEY, TEST_KEY = 'main/nll', 'validation/main/nll'
 TIME_KEY = 'iteration'
-WINDOW_SIZE = 5
+WINDOW_SIZE = 20
 PREFIX_KEYS = [
-    'conv1', 'conv2', 'conv4'
 ]
 SUFFIX_KEYS = ['max', 'mean', 'min', 'percentile/0', 'percentile/1', 'percentile/2',
                'percentile/3', 'percentile/4', 'percentile/5', 'percentile/6', 'std']
@@ -126,13 +126,19 @@ def callback():
             _get = get_for(k)
 
             xt = _get('mean')[:, 0]
-            v[0].data_source.data.update(
-                convert_to_patch(xt, _get('min')[:, 1], _get('max')[:, 1]))
-            v[1].data_source.data.update(
-                convert_to_patch(xt, _get('percentile/0')[:, 1], _get('percentile/6')[:, 1]))
+            v[0].data_source.data.update({
+                'x': _get('min')[:, 0],
+                'y': _get('min')[:, 1]
+            })
+            v[1].data_source.data.update({
+                'x': _get('max')[:, 0],
+                'y': _get('max')[:, 1]
+            })
             v[2].data_source.data.update(
-                convert_to_patch(xt, _get('percentile/1')[:, 1], _get('percentile/5')[:, 1]))
+                convert_to_patch(xt, _get('percentile/0')[:, 1], _get('percentile/6')[:, 1]))
             v[3].data_source.data.update(
+                convert_to_patch(xt, _get('percentile/1')[:, 1], _get('percentile/5')[:, 1]))
+            v[4].data_source.data.update(
                 convert_to_patch(xt, _get('percentile/2')[:, 1], _get('percentile/4')[:, 1]))
 
             v[-1].data_source.data.update({

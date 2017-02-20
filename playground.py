@@ -8,6 +8,7 @@ import argparse
 import sys
 import scipy.misc
 import numpy as np
+import importlib
 
 import matplotlib.pyplot as plt
 
@@ -218,11 +219,12 @@ with open('test', 'rb') as ifile:
 
 
 #%%
-layer = models.CausalDilatedConvolution1D(1, 1, 4, None, 2, initialW=1.0)
+importlib.reload(models)
+layer = models.CausalDilatedConvolution1D(1, 1, pad=4, dilate=4, kernel_width=2, initialW=1.0)
+input = np.arange(1, 9).reshape([1, 1, 1, 8]).astype(np.float32)
 
-input = np.arange(1024).reshape([1, 1, 1, 1024]).astype(np.float32)
+layer(input).data, layer(input).shape
 
-output = layer(input)
 layer.zerograds()
 
 grads = np.zeros_like(output.data)
@@ -230,7 +232,7 @@ grads[0, 0, 0, 6] = 1
 output.grad = grads
 
 output.backward()
-layer.b.grad
+layer.W.grad
 
 
 #%%
@@ -266,3 +268,6 @@ _ = plt.hist(np.squeeze(batch[0]), bins=100)
 _ = plt.hist(np.squeeze(utils.quantisize(batch[0], 256)), bins=100)
 
 #%%
+with open('vctk_0') as ifile:
+    print(os.fstat(ifile.fileno()))
+    d = np.load(ifile)
