@@ -62,7 +62,7 @@ def wav_files_in(dir):
             yield os.path.join(path, name)
 
 
-def _preprocess(ifilename, rate, chunk_length, chunk_overlap):
+def _preprocess(ifilename, rate, chunk_length):
     # data within [-32768 / 2, 32767 / 2] interval
     baserate, data = wavfile.read(ifilename)
     audio = signal.resample_poly(data, rate, baserate)
@@ -71,12 +71,17 @@ def _preprocess(ifilename, rate, chunk_length, chunk_overlap):
     audio = mulaw(wav_to_float(audio)) * 0.5 + 0.5
     while len(audio) >= chunk_length:
         yield audio[:chunk_length]
-        audio = audio[chunk_overlap:]
+        audio = audio[chunk_length:]
 
 
 def nth(iterable, n, default=None):
     "Returns the nth item or a default value (from itertool recipes)"
     return next(itertools.islice(iterable, n, None), default)
+
+
+def receptive_field_size(layers, stacks):
+    return stacks * 2 ** layers
+
 
 #%%
 class VCTK(DatasetMixin):
