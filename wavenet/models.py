@@ -157,7 +157,7 @@ class Classifier(chainer.Chain):
          y = self.predictor(x, label)
          dims = self.xp.prod(np.array(y.shape[2:]))  # for CIFAR should be 3072
 
-         nll = F.softmax_cross_entropy(y, t, normalize=False)
+         nll = F.softmax_cross_entropy(y, t, normalize=True)
          chainer.report({'nll': nll, 'bits/dim': nll / dims}, self)
          return nll
 
