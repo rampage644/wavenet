@@ -256,9 +256,17 @@ _ = plt.hist(audio2, bins=100)
 
 #%%
 overlap = 256
-data = utils.VCTK('.')
+data = utils.VCTK('.', 1024)
 audio, labels, _ = data.get_example(0)
 audio2, labels2, _ = data.get_example(1)
+
+for i in range(1024, 1050, 2):
+    print(audio[0, 0, i], labels[0, 0, i])
+
+a1, _, _ = data.get_example(0)
+a2, _, _ = data.get_example(1)
+a3, _, _ = data.get_example(2)
+a4, _, _ = data.get_example(3)
 
 _ = plt.hist(np.squeeze(audio), bins=100)
 _ = plt.hist(np.squeeze(labels), bins=100)
@@ -268,6 +276,21 @@ _ = plt.hist(np.squeeze(batch[0]), bins=100)
 _ = plt.hist(np.squeeze(utils.quantisize(batch[0], 256)), bins=100)
 
 #%%
-with open('vctk_0') as ifile:
-    print(os.fstat(ifile.fileno()))
+import os
+import numpy as np
+
+_levels = 256
+
+with open('vctk_0', 'rb') as ifile:
     d = np.load(ifile)
+
+count, width = d.shape
+data = d
+labels = utils.quantisize(data, _levels)
+data = np.eye(_levels)[labels]
+data = np.expand_dims(np.transpose(data, [0, 2, 1]), 2)
+labels = np.reshape(labels, [count, 1, 1, width])
+labels[:, :, :, :_receptive_field_size] = -1
+
+
+data.shape, labels.shape
