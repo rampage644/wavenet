@@ -227,7 +227,7 @@ class WaveNet(chainer.Chain):
     def __init__(self, out_channels, hidden_dim, out_hidden_dim, stacks_num,
                  layers_num, kernel_width):
         super().__init__(
-            conv1=CausalDilatedConvolution1D(1, hidden_dim, 2, 1, 2, initialW=INIT),
+            conv1=CausalDilatedConvolution1D(out_channels, hidden_dim, 2, 1, 2, initialW=INIT),
             stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width),
             conv2=L.Convolution2D(hidden_dim, out_hidden_dim, 1, initialW=INIT),
             conv3=L.Convolution2D(out_hidden_dim, out_channels, 1, initialW=INIT),

@@ -18,23 +18,24 @@ import wavenet.models as models
 import wavenet.utils as utils
 
 
-def generate_and_save_samples(sample_fn, length, count, dir, rate):
+def generate_and_save_samples(sample_fn, length, count, dir, rate, levels):
     def save_samples(data):
-        value = np.iinfo(np.int16).max // 2
+        data = (data * np.reshape(np.arange(levels) / (levels-1), [levels, 1, 1])).sum(
+            axis=1, keepdims=True)
+        value = np.iinfo(np.int16).max
         audio = (utils.inverse_mulaw(data * 2 - 1) * value).astype(np.int16)
         for idx, sample in enumerate(audio):
             filename = os.path.join(dir, 'sample_{}.wav'.format(idx))
-            wavfile.write(filename, rate, sample)
+            wavfile.write(filename, rate, np.squeeze(sample))
 
-    # XXX: Consider switch to white noise as input
     samples = chainer.Variable(
-        chainer.cuda.cupy.zeros([count, 1, 1, length], dtype='float32'))
+        chainer.cuda.cupy.zeros([count, levels, 1, length], dtype='float32'))
+    one_hot_ref = chainer.cuda.cupy.eye(levels).astype('float32')
 
     with tqdm.tqdm(total=length) as bar:
         for i in range(length):
             probs = F.softmax(sample_fn(samples))[:, :, 0, 0, i]
-            _, level_count = probs.shape
-            samples.data[:, 0, 0, i] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / (level_count - 1)
+            samples.data[:, :, 0, i] = one_hot_ref[utils.sample_from(probs.data.get())]
             bar.update()
 
     samples.to_cpu()
@@ -78,7 +79,8 @@ def main():
         B, C, H, W = samples.shape
         return model(samples, np.ones(B).astype('i') * args.label)
 
-    generate_and_save_samples(sample_fn, args.length, args.count, args.output, args.rate)
+    generate_and_save_samples(
+        sample_fn, args.length, args.count, args.output, args.rate, args.levels)
 
 
 if __name__ == '__main__':

@@ -98,12 +98,14 @@ class VCTK(DatasetMixin):
             with open(name, 'rb') as ifile:
                 fstat = os.fstat(ifile.fileno())
                 while ifile.tell() < fstat.st_size:
-                    d = np.load(ifile).astype(np.float32)
+                    d = np.load(ifile)
                     data.append(d)
         data = np.concatenate(data)
         count, width = data.shape
-        self.data = np.reshape(data, [count, 1, 1, width])
-        self.labels = quantisize(self.data, self._levels)
+        labels = quantisize(data, self._levels)
+        data = np.eye(self._levels)[labels].astype(np.float32)
+        self.data = np.expand_dims(np.transpose(data, [0, 2, 1]), 2)
+        self.labels = np.reshape(labels, [count, 1, 1, width])
         self.labels[:, :, :, :self._receptive_field_size] = -1
 
     def __len__(self):
