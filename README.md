@@ -247,7 +247,7 @@ Either model wasn't trained long enough to produce good-looking-to-human results
 
 [Download](assets/sample_sine500Hz.wav)
 
-#### WaveNet, overfit on VCTK speaker id 225
+#### WaveNet, overfit on VCTK speaker id 225, 4 stacks, 24 hour training
 
 [Download](assets/sample_225.wav)
 
