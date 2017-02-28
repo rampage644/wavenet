@@ -4,6 +4,8 @@ WaveNet replication study. Before stepping up to WaveNet implementation it was d
 
 This repository contains two modes: [Gated PixelCNN][pixelcnn-paper] and [WaveNet][wavenet-paper], see class definitions in `wavenet/models.py`.
 
+For detailed explanation of how these model work see [my blog post](http://sergeiturukin.com/2017/02/22/pixelcnn.html).
+
 ## Gated PixelCNN
 
 ```
