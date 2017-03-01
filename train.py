@@ -41,8 +41,10 @@ def main():
                         help='Number of hidden dimensions')
     parser.add_argument('--blocks_num', '-n', type=int, default=15,
                         help='Number of layers')
-    parser.add_argument('--gradclip', type=float, default=1.0,
-                        help='Bound for gradient hard clipping')
+    parser.add_argument('--clip', type=float, default=1.,
+                        help='L2 norm gradient clipping')
+    parser.add_argument('--weight_decay', type=float, default=0.0001,
+                        help='Weight decay rate (L2 regularization)')
     parser.add_argument('--learning_rate', type=float, default=0.001,
                         help='Bound for gradient hard clipping')
     parser.add_argument('--levels', type=int, default=2,
@@ -84,6 +86,8 @@ def main():
 
     optimizer = chainer.optimizers.Adam(args.learning_rate)
     optimizer.setup(model)
+    optimizer.add_hook(chainer.optimizer.GradientClipping(args.clip))
+    optimizer.add_hook(chainer.optimizer.WeightDecay(args.weight_decay))
 
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     test_iter = chainer.iterators.SerialIterator(test, args.batchsize,

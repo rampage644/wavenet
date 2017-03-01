@@ -36,7 +36,7 @@ def generate_and_save_samples(sample_fn, height, width, channels, count, filenam
                 for k in range(channels):
                     probs = F.softmax(sample_fn(samples))[:, :, k, i, j]
                     _, level_count = probs.shape
-                    samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get())) / (level_count - 1)
+                    samples.data[:, k, i, j] = chainer.cuda.to_gpu(utils.sample_from(probs.data.get()) / (level_count - 1))
                     bar.update()
     samples.to_cpu()
 
@@ -68,7 +68,6 @@ def main():
     args = parser.parse_args()
 
     IN_CHANNELS = 3
-    # multiply hidden dim by IN_CHANNELS to make sure mask is disible by IN_CHANNELS
     model = models.PixelCNN(IN_CHANNELS, args.hidden_dim, args.blocks_num, args.out_hidden_dim, args.levels)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
