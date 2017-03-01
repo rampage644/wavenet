@@ -65,10 +65,12 @@ def main():
                         help='Number of samples to generate')
     parser.add_argument('--rate', type=int, default=8000,
                         help='Samples rate')
+    parser.add_argument('--label_cardinality', type=int, default=10,
+                        help='Max class label integer')
     parser.add_argument('--length', type=int, default=4096, help='Output sample length')
     args = parser.parse_args()
 
-    model = models.WaveNet(args.levels, args.hidden_dim, args.out_hidden_dim, args.stacks_num,
+    model = models.WaveNet(args.levels, args.label_cardinality, args.hidden_dim, args.out_hidden_dim, args.stacks_num,
                        args.layers_num, 2)
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()

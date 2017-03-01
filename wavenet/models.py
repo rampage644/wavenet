@@ -187,18 +187,21 @@ class CausalDilatedConvolution1D(chainer.links.DilatedConvolution2D):
 
 
 class CausalLayer(chainer.Chain):
-    def __init__(self, in_channels, out_channels, dilate, kernel_width):
+    def __init__(self, in_channels, out_channels, condition_dim, dilate, kernel_width):
         super().__init__(
             gated_conv=CausalDilatedConvolution1D(
                 in_channels, 2*out_channels, None, dilate, kernel_width,
                 initialW=INIT),
             res_conv=L.Convolution2D(out_channels, in_channels, 1, initialW=INIT),
-            skip_conv=L.Convolution2D(out_channels, in_channels, 1, initialW=INIT)
+            skip_conv=L.Convolution2D(out_channels, in_channels, 1, initialW=INIT),
+            conditioning=L.EmbedID(condition_dim, 2 * out_channels)
         )
 
-    def __call__(self, x):
+    def __call__(self, x, label):
         x_ = self.gated_conv(x)
-        x_tanh, x_sigmoid = F.split_axis(x_, 2, axis=1)
+        condition = self.conditioning(label)
+        h = F.broadcast_to(F.expand_dims(F.expand_dims(condition, -1), -1), x_.shape)
+        x_tanh, x_sigmoid = F.split_axis(x_ + h, 2, axis=1)
 
         x_ = F.tanh(x_tanh) * F.sigmoid(x_sigmoid)
         x1 = self.res_conv(x_)
@@ -207,15 +210,15 @@ class CausalLayer(chainer.Chain):
 
 
 class CausalStack(chainer.ChainList):
-    def __init__(self, layers_num, in_channels, out_channels, kernel_width):
-        layers = [CausalLayer(in_channels, out_channels, 2 ** i, kernel_width)
+    def __init__(self, layers_num, in_channels, out_channels, condition_dim, kernel_width):
+        layers = [CausalLayer(in_channels, out_channels, condition_dim, 2 ** i, kernel_width)
                   for i in range(layers_num)]
         super().__init__(*layers)
 
-    def __call__(self, x):
+    def __call__(self, x, label):
         skip_conn = []
         for layer in self:
-            x, skip_ = layer(x)
+            x, skip_ = layer(x, label)
             skip_conn.append(skip_)
         return x, skip_conn
 
@@ -225,27 +228,27 @@ class StackList(chainer.ChainList):
         stacks = [CausalStack(*args, **kwargs) for _ in range(stack_num)]
         super().__init__(*stacks)
 
-    def __call__(self, x):
+    def __call__(self, x, label):
         skip_conn = []
         for stack in self:
-            x, skip = stack(x)
+            x, skip = stack(x, label)
             skip_conn.extend(skip)
         return x, skip_conn
 
 
 class WaveNet(chainer.Chain):
-    def __init__(self, out_channels, hidden_dim, out_hidden_dim, stacks_num,
+    def __init__(self, out_channels, condition_dim, hidden_dim, out_hidden_dim, stacks_num,
                  layers_num, kernel_width):
         super().__init__(
             conv1=CausalDilatedConvolution1D(out_channels, hidden_dim, 2, 1, 2, initialW=INIT),
-            stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, kernel_width),
+            stacks=StackList(stacks_num, layers_num, hidden_dim, hidden_dim, condition_dim, kernel_width),
             conv2=L.Convolution2D(hidden_dim, out_hidden_dim, 1, initialW=INIT),
             conv3=L.Convolution2D(out_hidden_dim, out_channels, 1, initialW=INIT),
         )
         self.out_channels = out_channels
 
     def __call__(self, x, label):
-        x, skip = self.stacks(self.conv1(x))
+        x, skip = self.stacks(self.conv1(x), label)
         x = self.conv2(F.relu(x+sum(skip)))
         x = self.conv3(F.relu(x))
 

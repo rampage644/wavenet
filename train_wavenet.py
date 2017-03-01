@@ -49,9 +49,14 @@ def main():
                         help='Collect layerwise statistics')
     args = parser.parse_args()
 
+    train = utils.VCTK(
+        args.data,
+        utils.receptive_field_size(args.layers_num, args.stacks_num))
+
     model = models.Classifier(
-        models.WaveNet(args.levels, args.hidden_dim, args.out_hidden_dim, args.stacks_num,
-                       args.layers_num, 2))
+        models.WaveNet(
+            args.levels, train.cardinality, args.hidden_dim, args.out_hidden_dim, args.stacks_num,
+            args.layers_num, 2))
 
     if args.gpu >= 0:
         chainer.cuda.get_device(args.gpu).use()
@@ -62,15 +67,11 @@ def main():
     optimizer.add_hook(chainer.optimizer.GradientClipping(args.clip))
     optimizer.add_hook(chainer.optimizer.WeightDecay(args.weight_decay))
 
-    train = utils.VCTK(
-        args.data,
-        utils.receptive_field_size(args.layers_num, args.stacks_num))
-
     train_iter = chainer.iterators.SerialIterator(train, args.batchsize)
     updater = chainer.training.StandardUpdater(train_iter, optimizer, device=args.gpu)
     trainer = chainer.training.Trainer(updater, (args.epoch, 'epoch'), out=args.out)
 
-    log_trigger = (1, 'epoch')
+    log_trigger = (10, 'iteration')
     trainer.extend(extensions.LogReport(trigger=log_trigger))
     trainer.extend(extensions.ProgressBar(update_interval=50))
     trainer.extend(extensions.snapshot())
