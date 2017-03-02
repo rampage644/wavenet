@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division, print_function,
 import argparse
 import concurrent.futures
 import os
+import re
 
 import numpy as np
 
@@ -14,6 +15,10 @@ BATCH = 10240
 RATE = 8000
 CHUNK = 1600
 
+def guess_label_from(filename):
+    numbers = re.findall(r'(\d+)', filename)
+    return int(numbers[0]) if len(numbers) else -1
+
 
 def split_into(data, n):
     res = []
@@ -22,18 +27,28 @@ def split_into(data, n):
     return res
 
 
-def process_files(files, id, output, rate, chunk_length, batch):
+def process_files(files, id, output, rate, size, chunk_length, batch):
     data = []
-    ofilename = os.path.join(output, 'vctk_{}'.format(id))
-    with open(ofilename, 'wb') as ofile:
+    labels = []
+    data_filename = os.path.join(output, 'vctk_{}'.format(id))
+    label_filename = os.path.join(output, 'vctk_{}_label'.format(id))
+    with open(data_filename, 'wb') as dfile, open(label_filename, 'wb') as lfile:
         for filename in files:
-            for chunk in utils._preprocess(filename, rate, chunk_length):
+            label = guess_label_from(filename)
+
+            def _flush():
+                np.save(dfile, np.array(data))
+                np.save(lfile, np.array(labels))
+                data.clear()
+                labels.clear()
+
+            for chunk in utils._preprocess(filename, rate, size, chunk_length):
                 data.append(chunk)
+                labels.append(label)
 
             if len(data) >= batch:
-                np.save(ofile, np.array(data))
-                data.clear()
-        np.save(ofile, np.array(data))
+                _flush()
+            _flush()
 
 
 def main():
@@ -51,12 +66,12 @@ def main():
     files = list(utils.wav_files_in(args.data))
     file_groups = split_into(files, args.workers)
 
-    size = utils.receptive_field_size(args.layers_num, args.stacks_num) + args.target_length
+    size = utils.receptive_field_size(args.layers_num, args.stacks_num)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         for i in range(args.workers):
             pool.submit(process_files, file_groups[i], i, args.output, args.rate,
-                        size, args.flush_every)
+                        size, args.target_length + size, args.flush_every)
 
 
 if __name__ == '__main__':

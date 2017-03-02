@@ -62,16 +62,17 @@ def wav_files_in(dir):
             yield os.path.join(path, name)
 
 
-def _preprocess(ifilename, rate, chunk_length):
-    # data within [-32768 / 2, 32767 / 2] interval
-    baserate, data = wavfile.read(ifilename)
-    audio = signal.resample_poly(data, rate, baserate)
+def _preprocess(ifilename, rate, size, chunk_length):
+    # data within [-32768, 32767] interval
+    baserate, audio = wavfile.read(ifilename)
+    if rate != baserate:
+        audio = signal.resample_poly(audio, rate, baserate)
     # audio within [0; 1] interval: wav_to_float converts it to be in [-1;1] interval
     # mulaw leaves it within same interval, then we shift it to be in [0;1] interval
     audio = mulaw(wav_to_float(audio)) * 0.5 + 0.5
     while len(audio) >= chunk_length:
         yield audio[:chunk_length]
-        audio = audio[chunk_length:]
+        audio = audio[chunk_length - size:]
 
 
 def nth(iterable, n, default=None):
@@ -92,24 +93,31 @@ class VCTK(DatasetMixin):
 
     def _populate(self, dir):
         data = []
-        files = [os.path.join(dir, name) for name in os.listdir(dir) if 'vctk_' in name]
+        classes = []
+        files = filter(lambda s: 'label' not in s,
+            [os.path.join(dir, name) for name in os.listdir(dir) if 'vctk_' in name])
 
         for name in files:
-            with open(name, 'rb') as ifile:
-                fstat = os.fstat(ifile.fileno())
-                while ifile.tell() < fstat.st_size:
-                    d = np.load(ifile)
+            with open(name, 'rb') as dfile, open(name+'_label', 'rb') as lfile:
+                fstat = os.fstat(dfile.fileno())
+                while dfile.tell() < fstat.st_size:
+                    d = np.load(dfile)
                     data.append(d)
+                    classes.append(np.load(lfile))
+
         data = np.concatenate(data)
-        count, width = data.shape
+        self.classes = np.concatenate(classes).astype('i')
+        self.cardinality = np.max(classes) + 1
+        # count, width = data.shape
         labels = quantisize(data, self._levels)
         data = np.eye(self._levels)[labels].astype(np.float32)
         self.data = np.expand_dims(np.transpose(data, [0, 2, 1]), 2)
-        self.labels = np.reshape(labels, [count, 1, 1, width])
+        # self.labels = np.reshape(labels, [count, 1, 1, width])
+        self.labels = np.expand_dims(np.expand_dims(labels, 1), 1)
         self.labels[:, :, :, :self._receptive_field_size] = -1
 
     def __len__(self):
         return len(self.data)
 
     def get_example(self, i):
-        return (self.data[i], self.labels[i], np.array(0))
+        return (self.data[i], self.labels[i], self.classes[i])
